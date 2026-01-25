@@ -1,17 +1,44 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, Target, Users, MessageSquare, TrendingUp } from "lucide-react";
+import { Plus, Target, Users, MessageSquare, TrendingUp, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { CampaignWizard } from "@/components/CampaignWizard";
 
 export default function Campaigns() {
+  const [showWizard, setShowWizard] = useState(false);
   const { user, loading: authLoading } = useAuth();
-  const { data: campaigns, isLoading } = trpc.campaigns.list.useQuery(undefined, {
+  const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery(undefined, {
     enabled: !!user,
   });
+
+  if (showWizard) {
+    return (
+      <DashboardLayout>
+        <div className="p-2">
+          <Button
+            variant="ghost"
+            onClick={() => setShowWizard(false)}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Campaigns
+          </Button>
+          <CampaignWizard
+            onComplete={() => {
+              setShowWizard(false);
+              refetch();
+            }}
+            onCancel={() => setShowWizard(false)}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (authLoading || isLoading) {
     return (
@@ -37,7 +64,7 @@ export default function Campaigns() {
               Manage your multi-platform outreach campaigns
             </p>
           </div>
-          <Button size="lg">
+          <Button size="lg" onClick={() => setShowWizard(true)} className="bg-gradient-to-r from-purple-600 to-blue-600">
             <Plus className="mr-2 h-4 w-4" />
             New Campaign
           </Button>
@@ -147,7 +174,7 @@ export default function Campaigns() {
                 Create your first campaign to start finding and reaching out to candidates
                 across multiple platforms automatically.
               </p>
-              <Button size="lg">
+              <Button size="lg" onClick={() => setShowWizard(true)} className="bg-gradient-to-r from-purple-600 to-blue-600">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Your First Campaign
               </Button>
