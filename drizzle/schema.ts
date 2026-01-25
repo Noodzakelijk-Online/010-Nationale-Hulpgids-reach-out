@@ -87,7 +87,7 @@ export const messages = mysqlTable("messages", {
   subject: varchar("subject", { length: 500 }),
   content: text("content").notNull(),
   language: mysqlEnum("language", ["nl", "en"]).default("nl").notNull(),
-  status: mysqlEnum("status", ["draft", "queued", "sent", "delivered", "failed", "responded"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "queued", "approved", "sent", "delivered", "failed", "responded", "replied", "rejected"]).default("draft").notNull(),
   externalMessageId: varchar("externalMessageId", { length: 255 }), // Platform-specific message ID
   sentAt: timestamp("sentAt"),
   deliveredAt: timestamp("deliveredAt"),

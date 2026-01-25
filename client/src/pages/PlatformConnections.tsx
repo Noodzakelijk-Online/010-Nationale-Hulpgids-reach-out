@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, XCircle, Link as LinkIcon, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Link as LinkIcon, Loader2, TestTube2, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,10 +17,12 @@ export default function PlatformConnections() {
     enabled: !!user,
   });
   const saveCredentials = trpc.platformCredentials.save.useMutation();
+  const testConnection = trpc.platformCredentials.testConnection.useMutation();
 
   const [selectedPlatform, setSelectedPlatform] = useState<number | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [testResults, setTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
 
   const handleConnect = async (platformId: number) => {
     if (!email || !password) {
@@ -121,6 +123,56 @@ export default function PlatformConnections() {
                       </div>
                       <div className="flex gap-2">
                         <Button
+                          variant="outline"
+                          onClick={async () => {
+                            if (!email || !password) {
+                              toast.error("Please enter credentials first");
+                              return;
+                            }
+                            try {
+                              const result = await testConnection.mutateAsync({
+                                platformId: platform.id,
+                                email,
+                                password,
+                              });
+                              setTestResults({
+                                ...testResults,
+                                [platform.id]: {
+                                  success: result.success,
+                                  message: result.message,
+                                },
+                              });
+                              if (result.success) {
+                                toast.success("Connection test successful!");
+                              } else {
+                                toast.error(result.message);
+                              }
+                            } catch (error: any) {
+                              toast.error(`Test failed: ${error.message}`);
+                              setTestResults({
+                                ...testResults,
+                                [platform.id]: {
+                                  success: false,
+                                  message: error.message,
+                                },
+                              });
+                            }
+                          }}
+                          disabled={testConnection.isPending}
+                        >
+                          {testConnection.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            <>
+                              <TestTube2 className="mr-2 h-4 w-4" />
+                              Test
+                            </>
+                          )}
+                        </Button>
+                        <Button
                           onClick={() => handleConnect(platform.id)}
                           disabled={saveCredentials.isPending}
                           className="flex-1"
@@ -141,6 +193,27 @@ export default function PlatformConnections() {
                           Cancel
                         </Button>
                       </div>
+                      {testResults[platform.id] && (
+                        <div
+                          className={`p-3 rounded-lg border-2 ${testResults[platform.id].success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {testResults[platform.id].success ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                            ) : (
+                              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                            )}
+                            <div className="flex-1">
+                              <p className={`text-sm font-medium ${testResults[platform.id].success ? "text-green-900" : "text-red-900"}`}>
+                                {testResults[platform.id].success ? "Connection Successful" : "Connection Failed"}
+                              </p>
+                              <p className={`text-xs mt-1 ${testResults[platform.id].success ? "text-green-700" : "text-red-700"}`}>
+                                {testResults[platform.id].message}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <Button

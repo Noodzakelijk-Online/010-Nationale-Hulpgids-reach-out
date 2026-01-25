@@ -222,3 +222,39 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [x] Create bulkOutreach tRPC procedure
 - [x] Add automated messaging checkbox to campaign wizard
 - [ ] Test end-to-end flow with real Nationale Hulpgids data
+
+
+---
+
+## NEW ENHANCEMENTS: Message Review, Credentials Testing & Response Tracking
+
+### Message Review Dashboard
+- [x] Create dedicated Messages Review page component
+- [x] Display all queued messages with candidate details
+- [x] Add inline message editing capability
+- [x] Implement approve/reject actions for individual messages
+- [x] Add bulk approve/reject functionality
+- [x] Show message preview with formatting
+- [x] Add filter by campaign, platform, status
+- [x] Implement message status updates (queued → approved → sent)
+- [x] Add tRPC procedures: listAll, updateStatus, update, bulkUpdateStatus
+- [x] Add database functions: getAllMessages, updateMessageStatus, bulkUpdateMessageStatus
+- [x] Update message status enum to include approved, replied, rejected
+
+### Platform Credentials Testing
+- [x] Add "Test Connection" button to platform credentials form
+- [x] Implement testConnection tRPC procedure for Nationale Hulpgids
+- [x] Show connection status (success/failure) with error details
+- [x] Add visual indicators for connected vs disconnected platforms
+- [ ] Store last tested timestamp in database (optional enhancement)
+- [x] Display connection health on Platforms page
+
+### Response Tracking & Inbox Monitoring
+- [x] Add response status to messages table (replied, responded in schema)
+- [x] Implement engagement metrics (response rate, avg response time, trend)
+- [x] Create engagement analytics component with visual breakdown
+- [x] Add getEngagementMetrics tRPC procedure and database function
+- [ ] Create inbox monitoring service for candidate replies (future enhancement)
+- [ ] Add notification system for new candidate replies (future enhancement)
+- [ ] Implement conversation threading for back-and-forth messages (future enhancement)
+- [ ] Add response sentiment analysis (positive, neutral, negative) (future enhancement)

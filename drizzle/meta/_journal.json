@@ -15,6 +15,13 @@
       "when": 1769344228250,
       "tag": "0001_giant_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769350717525,
+      "tag": "0002_worthless_nuke",
+      "breakpoints": true
     }
   ]
 }

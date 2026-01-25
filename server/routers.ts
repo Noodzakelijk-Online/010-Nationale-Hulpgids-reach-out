@@ -25,7 +25,7 @@ export const appRouter = router({
     list: publicProcedure.query(async () => {
       const { getAllPlatforms } = await import("./db");
       return getAllPlatforms();
-    }),
+      }),
   }),
 
   candidates: router({
@@ -214,6 +214,13 @@ export const appRouter = router({
         const { getCampaignStats } = await import("./db");
         return getCampaignStats(input.id);
       }),
+
+    getEngagementMetrics: protectedProcedure
+      .input(z.object({ campaignId: z.number() }))
+      .query(async ({ input }) => {
+        const { getEngagementMetrics } = await import("./db");
+        return getEngagementMetrics(input.campaignId);
+      }),
   }),
 
   messages: router({
@@ -342,6 +349,58 @@ export const appRouter = router({
           messages: results.messages,
         };
       }),
+
+    listAll: protectedProcedure
+      .input(
+        z.object({
+          status: z.string().optional(),
+          campaignId: z.number().optional(),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        const { getAllMessages } = await import("./db");
+        return getAllMessages(ctx.user.id, input.status, input.campaignId);
+      }),
+
+    updateStatus: protectedProcedure
+      .input(
+        z.object({
+          messageId: z.number(),
+          status: z.enum(["queued", "approved", "sent", "rejected", "replied"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { updateMessageStatus } = await import("./db");
+        await updateMessageStatus(input.messageId, input.status);
+        return { success: true };
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          messageId: z.number(),
+          subject: z.string(),
+          content: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { updateMessage } = await import("./db");
+        await updateMessage(input.messageId, input.subject, input.content);
+        return { success: true };
+      }),
+
+    bulkUpdateStatus: protectedProcedure
+      .input(
+        z.object({
+          messageIds: z.array(z.number()),
+          status: z.enum(["queued", "approved", "sent", "rejected", "replied"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { bulkUpdateMessageStatus } = await import("./db");
+        const updated = await bulkUpdateMessageStatus(input.messageIds, input.status);
+        return { success: true, updated };
+      }),
   }),
 
   platformCredentials: router({
@@ -385,6 +444,66 @@ export const appRouter = router({
         });
         
         return { id };
+      }),
+
+    testConnection: protectedProcedure
+      .input(
+        z.object({
+          platformId: z.number(),
+          email: z.string(),
+          password: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { getAllPlatforms } = await import("./db");
+        
+        // Get platform details
+        const platforms = await getAllPlatforms();
+        const platform = platforms.find((p: any) => p.id === input.platformId);
+        
+        if (!platform) {
+          return {
+            success: false,
+            message: "Platform not found",
+          };
+        }
+
+        // Only test Nationale Hulpgids for now
+        if (platform.name === "Nationale Hulpgids") {
+          try {
+            const { NationaleHulpgidsScraper } = await import("./services/scrapers/nationaleHulpgids");
+            const scraper = new NationaleHulpgidsScraper({
+              email: input.email,
+              password: input.password,
+            });
+            
+            const success = await scraper.authenticate();
+            
+            if (success) {
+              return {
+                success: true,
+                message: "Successfully authenticated with Nationale Hulpgids",
+              };
+            } else {
+              return {
+                success: false,
+                message: "Authentication failed. Please check your credentials.",
+              };
+            }
+          } catch (error: any) {
+            console.error("[Test Connection] Error:", error);
+            return {
+              success: false,
+              message: `Connection test failed: ${error.message || "Unknown error"}`
+            };
+          }
+        }
+
+        // For other platforms, return not implemented
+        return {
+          success: false,
+          message: `Connection testing not yet implemented for ${platform.name}`,
+        };
       }),
   }),
 });

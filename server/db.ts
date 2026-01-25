@@ -198,10 +198,156 @@ export async function createMessage(message: typeof messages.$inferInsert) {
   return Number(result[0].insertId);
 }
 
-export async function updateMessage(id: number, updates: Partial<Message>) {
+export async function updateMessage(id: number, subject: string, content: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(messages).set(updates).where(eq(messages.id, id));
+  await db.update(messages).set({ subject, content }).where(eq(messages.id, id));
+}
+
+export async function getAllMessages(userId: number, status?: string, campaignId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Build query with joins to get related data
+  let query = db
+    .select({
+      id: messages.id,
+      campaignId: messages.campaignId,
+      candidateId: messages.candidateId,
+      platformId: messages.platformId,
+      subject: messages.subject,
+      content: messages.content,
+      status: messages.status,
+      language: messages.language,
+      sentAt: messages.sentAt,
+      createdAt: messages.createdAt,
+      candidate: {
+        id: candidates.id,
+        name: candidates.name,
+        location: candidates.location,
+        experience: candidates.experience,
+        compatibilityScore: candidates.compatibilityScore,
+      },
+      platform: {
+        id: platforms.id,
+        name: platforms.name,
+      },
+    })
+    .from(messages)
+    .leftJoin(candidates, eq(messages.candidateId, candidates.id))
+    .leftJoin(platforms, eq(messages.platformId, platforms.id))
+    .leftJoin(campaigns, eq(messages.campaignId, campaigns.id));
+  
+  // Apply filters
+  const conditions: any[] = [eq(campaigns.userId, userId)];
+  if (status) {
+    conditions.push(eq(messages.status, status as any));
+  }
+  if (campaignId) {
+    conditions.push(eq(messages.campaignId, campaignId));
+  }
+  
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  return query.orderBy(desc(messages.createdAt));
+}
+
+export async function updateMessageStatus(messageId: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updates: any = { status };
+  if (status === "sent") {
+    updates.sentAt = new Date();
+  }
+  
+  await db.update(messages).set(updates).where(eq(messages.id, messageId));
+}
+
+export async function bulkUpdateMessageStatus(messageIds: number[], status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updates: any = { status };
+  if (status === "sent") {
+    updates.sentAt = new Date();
+  }
+  
+  for (const messageId of messageIds) {
+    await db.update(messages).set(updates).where(eq(messages.id, messageId));
+  }
+  
+  return messageIds.length;
+}
+
+export async function getEngagementMetrics(campaignId: number) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      totalSent: 0,
+      totalReplied: 0,
+      totalPending: 0,
+      responseRate: 0,
+      avgResponseTime: undefined,
+      trend: "stable" as const,
+    };
+  }
+  
+  // Get all messages for this campaign
+  const allMessages = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.campaignId, campaignId));
+  
+  const totalSent = allMessages.filter((m) => 
+    m.status === "sent" || m.status === "delivered" || m.status === "replied" || m.status === "responded"
+  ).length;
+  
+  const totalReplied = allMessages.filter((m) => 
+    m.status === "replied" || m.status === "responded"
+  ).length;
+  
+  const totalPending = allMessages.filter((m) => 
+    m.status === "sent" || m.status === "delivered"
+  ).length;
+  
+  const responseRate = totalSent > 0 ? (totalReplied / totalSent) * 100 : 0;
+  
+  // Calculate average response time
+  let avgResponseTime: number | undefined = undefined;
+  const repliedMessages = allMessages.filter((m) => 
+    (m.status === "replied" || m.status === "responded") && m.sentAt && m.respondedAt
+  );
+  
+  if (repliedMessages.length > 0) {
+    const totalResponseTime = repliedMessages.reduce((sum, m) => {
+      if (m.sentAt && m.respondedAt) {
+        const diff = m.respondedAt.getTime() - m.sentAt.getTime();
+        return sum + diff;
+      }
+      return sum;
+    }, 0);
+    avgResponseTime = totalResponseTime / repliedMessages.length / (1000 * 60 * 60); // Convert to hours
+  }
+  
+  // Determine trend (simplified - could be enhanced with historical data)
+  let trend: "up" | "down" | "stable" = "stable";
+  if (responseRate > 20) {
+    trend = "up";
+  } else if (responseRate < 10 && totalSent > 5) {
+    trend = "down";
+  }
+  
+  return {
+    totalSent,
+    totalReplied,
+    totalPending,
+    responseRate,
+    avgResponseTime,
+    trend,
+  };
 }
 
 // Platform credentials queries

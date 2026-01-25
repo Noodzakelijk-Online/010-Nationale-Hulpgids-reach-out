@@ -1,0 +1,1 @@
+ALTER TABLE `messages` MODIFY COLUMN `status` enum('draft','queued','approved','sent','delivered','failed','responded','replied','rejected') NOT NULL DEFAULT 'draft';
