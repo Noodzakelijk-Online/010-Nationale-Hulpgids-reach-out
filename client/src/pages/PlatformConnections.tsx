@@ -76,21 +76,22 @@ export default function PlatformConnections() {
             const isSelected = selectedPlatform === platform.id;
 
             return (
-              <Card key={platform.id} className={isSelected ? "ring-2 ring-primary" : ""}>
+              <Card key={platform.id} className={`transition-all hover:shadow-xl ${isSelected ? "ring-2 ring-purple-500 shadow-lg" : ""} ${connected ? "border-green-200 bg-gradient-to-br from-green-50 to-white" : "border-gray-200"}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {platform.name}
-                        {connected ? (
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center gap-3 text-lg">
+                        <div className={`p-2 rounded-lg ${connected ? "bg-green-100" : "bg-gray-100"}`}>
+                          <LinkIcon className={`h-5 w-5 ${connected ? "text-green-600" : "text-gray-400"}`} />
+                        </div>
+                        <span>{platform.name}</span>
+                        {connected && (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-muted-foreground" />
                         )}
                       </CardTitle>
-                      <CardDescription className="mt-1">{platform.baseUrl}</CardDescription>
+                      <CardDescription className="mt-2 ml-12 text-sm">{platform.baseUrl}</CardDescription>
                     </div>
-                    <Badge variant={connected ? "default" : "secondary"}>
+                    <Badge variant={connected ? "default" : "secondary"} className={connected ? "bg-green-500" : ""}>
                       {connected ? "Connected" : "Not Connected"}
                     </Badge>
                   </div>
