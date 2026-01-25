@@ -4,15 +4,22 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import DashboardLayout from "./components/DashboardLayout";
 import Home from "./pages/Home";
+import Campaigns from "./pages/Campaigns";
+import Candidates from "./pages/Candidates";
+import Messages from "./pages/Messages";
+import PlatformConnections from "./pages/PlatformConnections";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={Home} />
+      <Route path="/campaigns" component={Campaigns} />
+      <Route path="/candidates" component={Candidates} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/platforms" component={PlatformConnections} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
