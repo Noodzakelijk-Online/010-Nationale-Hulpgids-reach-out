@@ -10,6 +10,7 @@ import Campaigns from "./pages/Campaigns";
 import Candidates from "./pages/Candidates";
 import Messages from "./pages/Messages";
 import PlatformConnections from "./pages/PlatformConnections";
+import QueueMonitor from "./pages/QueueMonitor";
 
 function Router() {
   return (
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/candidates" component={Candidates} />
       <Route path="/messages" component={Messages} />
       <Route path="/platforms" component={PlatformConnections} />
+      <Route path="/queue" component={QueueMonitor} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

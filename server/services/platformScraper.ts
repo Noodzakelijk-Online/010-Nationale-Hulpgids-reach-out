@@ -131,41 +131,28 @@ class IndeedScraper extends BaseScraper {
   }
 
   async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
-    // Simulate scraping Indeed for job seekers/candidates
-    // In production, this would use puppeteer/playwright or Indeed API
-    console.log(`[Indeed] Searching with criteria:`, criteria);
+    // Use Crawlee-powered scraper
+    const { createIndeedScraper } = await import("./scrapers/crawleeIndeed");
+    const crawleeScraper = createIndeedScraper({
+      email: this.credentials?.email || "",
+      password: this.credentials?.password || "",
+      maxRequestsPerCrawl: 50,
+    });
     
-    await this.delay(1000); // Rate limiting
-
-    // Mock data for demonstration
-    return [
-      {
-        name: "Sarah Johnson",
-        email: "sarah.j@example.com",
-        profileUrl: "https://www.indeed.com/profile/sarah-johnson",
-        location: criteria.location || "Amsterdam",
-        experience: "5 years in healthcare",
-        services: "Elderly care, medication management",
-        availability: "Monday-Friday, 9am-5pm",
-        hourlyRate: "€22/hour",
-        bio: "Experienced healthcare professional with passion for elderly care",
-        skills: ["Patient care", "Medication management", "First aid"],
-        languages: ["Dutch", "English"],
-        certifications: ["BIG registration", "First aid certificate"],
-      },
-      {
-        name: "Michael van der Berg",
-        profileUrl: "https://www.indeed.com/profile/michael-vandenberg",
-        location: criteria.location || "Rotterdam",
-        experience: "3 years in personal care",
-        services: "Personal care, companionship",
-        availability: "Flexible schedule",
-        hourlyRate: "€18/hour",
-        bio: "Dedicated care worker with focus on quality of life",
-        skills: ["Personal care", "Companionship", "Mobility assistance"],
-        languages: ["Dutch", "German"],
-      },
-    ];
+    const results = await crawleeScraper.searchCandidates({
+      location: criteria.location || "Amsterdam",
+      services: criteria.services?.split(",").map(s => s.trim()),
+    });
+    
+    await crawleeScraper.close();
+    return results.map(r => ({
+      ...r,
+      services: r.services?.join(", "),
+      hourlyRate: r.hourlyRate ? `€${r.hourlyRate}/hour` : undefined,
+      skills: [],
+      languages: ["Nederlands", "Engels"],
+      certifications: [],
+    }));
   }
 
   async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
@@ -264,23 +251,27 @@ class PGBVacaturesScraper extends BaseScraper {
   }
 
   async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
-    console.log(`[PGBvacatures] Searching with criteria:`, criteria);
-    await this.delay(1000);
-
-    return [
-      {
-        name: "Lisa Bakker",
-        profileUrl: "https://www.pgbvacatures.nl/zorgverlener/lisa-bakker",
-        location: criteria.location || "Utrecht",
-        experience: "4 years PGB care",
-        services: "PGB begeleiding, persoonlijke verzorging",
-        availability: "Part-time, flexibel",
-        hourlyRate: "€19/hour",
-        bio: "Ervaren PGB zorgverlener met persoonlijke benadering",
-        skills: ["PGB administratie", "Persoonlijke verzorging", "Begeleiding"],
-        languages: ["Nederlands", "Engels"],
-      },
-    ];
+    // Use Crawlee-powered scraper
+    const { createPGBvacaturesScraper } = await import("./scrapers/crawleePGBvacatures");
+    const crawleeScraper = createPGBvacaturesScraper({
+      email: this.credentials?.email || "",
+      password: this.credentials?.password || "",
+      maxRequestsPerCrawl: 50,
+    });
+    
+    const results = await crawleeScraper.searchCandidates({
+      location: criteria.location || "Utrecht",
+      services: criteria.services?.split(",").map(s => s.trim()),
+    });
+    
+    await crawleeScraper.close();
+    return results.map(r => ({
+      ...r,
+      services: r.services?.join(", "),
+      hourlyRate: r.hourlyRate ? `€${r.hourlyRate}/hour` : undefined,
+      skills: [],
+      languages: ["Nederlands"],
+    }));
   }
 
   async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
@@ -311,24 +302,28 @@ class ZorgbanenScraper extends BaseScraper {
   }
 
   async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
-    console.log(`[Zorgbanen] Searching with criteria:`, criteria);
-    await this.delay(1000);
-
-    return [
-      {
-        name: "Peter Jansen",
-        profileUrl: "https://www.zorgbanen.nl/kandidaat/peter-jansen",
-        location: criteria.location || "Den Haag",
-        experience: "6 years in verpleging",
-        services: "Verpleegkundige zorg, wondverzorging",
-        availability: "Fulltime beschikbaar",
-        hourlyRate: "€28/hour",
-        bio: "Gediplomeerd verpleegkundige met brede ervaring",
-        skills: ["Verpleegkundige handelingen", "Wondverzorging", "Medicatie"],
-        languages: ["Nederlands", "Engels", "Duits"],
-        certifications: ["Verpleegkundige niveau 4", "BIG geregistreerd"],
-      },
-    ];
+    // Use Crawlee-powered scraper
+    const { createZorgbanenScraper } = await import("./scrapers/crawleeZorgbanen");
+    const crawleeScraper = createZorgbanenScraper({
+      email: this.credentials?.email || "",
+      password: this.credentials?.password || "",
+      maxRequestsPerCrawl: 50,
+    });
+    
+    const results = await crawleeScraper.searchCandidates({
+      location: criteria.location || "Den Haag",
+      services: criteria.services?.split(",").map(s => s.trim()),
+    });
+    
+    await crawleeScraper.close();
+    return results.map(r => ({
+      ...r,
+      services: r.services?.join(", "),
+      hourlyRate: r.hourlyRate ? `€${r.hourlyRate}/hour` : undefined,
+      skills: [],
+      languages: ["Nederlands"],
+      certifications: [],
+    }));
   }
 
   async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
@@ -359,23 +354,27 @@ class JobbirdScraper extends BaseScraper {
   }
 
   async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
-    console.log(`[Jobbird] Searching with criteria:`, criteria);
-    await this.delay(1000);
-
-    return [
-      {
-        name: "Emma Visser",
-        profileUrl: "https://www.jobbird.com/profile/emma-visser",
-        location: criteria.location || "Eindhoven",
-        experience: "2 years in zorg",
-        services: "Thuiszorg, huishoudelijke hulp",
-        availability: "Weekends en avonden",
-        hourlyRate: "€16/hour",
-        bio: "Enthousiaste starter in de zorg met veel motivatie",
-        skills: ["Huishoudelijke hulp", "Boodschappen", "Gezelschap"],
-        languages: ["Nederlands"],
-      },
-    ];
+    // Use Crawlee-powered scraper
+    const { createJobbirdScraper } = await import("./scrapers/crawleeJobbird");
+    const crawleeScraper = createJobbirdScraper({
+      email: this.credentials?.email || "",
+      password: this.credentials?.password || "",
+      maxRequestsPerCrawl: 50,
+    });
+    
+    const results = await crawleeScraper.searchCandidates({
+      location: criteria.location || "Eindhoven",
+      services: criteria.services?.split(",").map(s => s.trim()),
+    });
+    
+    await crawleeScraper.close();
+    return results.map(r => ({
+      ...r,
+      services: r.services?.join(", "),
+      hourlyRate: r.hourlyRate ? `€${r.hourlyRate}/hour` : undefined,
+      skills: [],
+      languages: ["Nederlands"],
+    }));
   }
 
   async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {

@@ -299,3 +299,37 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [ ] Write vitest tests for queue, scraper, rate limiter
 - [ ] Test end-to-end flow with all enhancements
 - [ ] Update documentation with new features
+
+
+---
+
+## NEXT ENHANCEMENTS: Redis + Crawlee Migration + Dashboard
+
+### Phase 1: Redis Support for Production
+- [ ] Add Redis connection with automatic fallback to in-memory queue
+- [ ] Create hybrid queue service that detects Redis availability
+- [ ] Update BullMQ integration to use Redis when available
+- [ ] Add Redis health check endpoint
+- [ ] Test queue persistence and recovery with Redis
+- [ ] Document Redis setup for production deployment
+
+### Phase 2: Migrate All Platform Scrapers to Crawlee
+- [x] Create Crawlee scraper for Indeed
+- [x] Create Crawlee scraper for PGBvacatures
+- [x] Create Crawlee scraper for Zorgbanen
+- [x] Create Crawlee scraper for Jobbird
+- [x] Add platform-specific anti-detection configurations
+- [x] Test all scrapers with mock data
+- [x] Update platformScraper.ts to use Crawlee scrapers
+
+### Phase 3: Queue Monitoring Dashboard
+- [x] Create QueueMonitor page component
+- [x] Add real-time queue statistics display
+- [x] Show job status breakdown (waiting, active, completed, failed, delayed)
+- [x] Add visual progress bars for queue distribution
+- [x] Display success/failure rates per platform
+- [x] Add queue health status indicators
+- [x] Create visual charts for queue health metrics
+- [x] Add navigation link to Queue Monitor in sidebar
+- [x] Add route to App.tsx
+- [x] Implement auto-refresh functionality (every 3 seconds)
