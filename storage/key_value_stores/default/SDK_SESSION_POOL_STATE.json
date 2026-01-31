@@ -1,0 +1,61 @@
+{
+  "usableSessionsCount": 1,
+  "retiredSessionsCount": 0,
+  "sessions": [
+    {
+      "id": "session_Xx9mEr4r98",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.0",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": [
+          {
+            "key": "PHPSESSID",
+            "value": "74536a65b59db1624efd7255a69cade5",
+            "domain": "www.nationalehulpgids.nl",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": true,
+            "creation": "2026-01-31T11:57:31.615Z",
+            "lastAccessed": "2026-01-31T11:57:31.615Z",
+            "sameSite": "none"
+          },
+          {
+            "key": "_chosentype",
+            "value": "deleted",
+            "expires": "1970-01-01T00:00:01.000Z",
+            "maxAge": 0,
+            "domain": "www.nationalehulpgids.nl",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-01-31T11:57:31.616Z",
+            "lastAccessed": "2026-01-31T11:57:31.616Z"
+          },
+          {
+            "key": "cookieaccept",
+            "value": "0",
+            "expires": "2028-01-31T11:57:31.000Z",
+            "maxAge": 63072000,
+            "domain": "www.nationalehulpgids.nl",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-01-31T11:57:31.616Z",
+            "lastAccessed": "2026-01-31T11:57:31.616Z"
+          }
+        ]
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-01-31T12:47:29.657Z",
+      "createdAt": "2026-01-31T11:57:29.657Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    }
+  ]
+}

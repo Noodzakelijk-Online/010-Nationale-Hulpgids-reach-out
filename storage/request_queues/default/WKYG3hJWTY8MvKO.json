@@ -1,0 +1,9 @@
+{
+	"id": "WKYG3hJWTY8MvKO",
+	"json": "{\"id\":\"WKYG3hJWTY8MvKO\",\"url\":\"https://www.nationalehulpgids.nl/zoeken?location=Arnhem&distance=25&services=Personal+care\",\"loadedUrl\":\"https://www.nationalehulpgids.nl/zoeken?location=Arnhem&distance=25&services=Personal+care\",\"uniqueKey\":\"https://www.nationalehulpgids.nl/zoeken?distance=25&location=Arnhem&services=Personal+care\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"__crawlee\":{\"state\":4}},\"handledAt\":\"2026-01-31T11:57:31.621Z\"}",
+	"method": "GET",
+	"orderNo": null,
+	"retryCount": 0,
+	"uniqueKey": "https://www.nationalehulpgids.nl/zoeken?distance=25&location=Arnhem&services=Personal+care",
+	"url": "https://www.nationalehulpgids.nl/zoeken?location=Arnhem&distance=25&services=Personal+care"
+}

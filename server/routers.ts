@@ -6,6 +6,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
 
+// Import queue services (using in-memory queue for development)
+import { addMessageToQueue, addDiscoveryToQueue, getQueueStats } from "./services/inMemoryQueue";
+import { rateLimitMiddleware } from "./_core/rateLimitMiddleware";
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -18,6 +22,14 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  // Queue management router
+  queue: router({    getStats: protectedProcedure
+      .input(z.object({ queueName: z.enum(["messages", "discovery"]) }))
+      .query(async ({ input }) => {
+        return await getQueueStats(input.queueName);
+      }),
   }),
 
   // Multi-platform reach-out tool routers

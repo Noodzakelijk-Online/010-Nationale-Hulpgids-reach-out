@@ -258,3 +258,44 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [ ] Add notification system for new candidate replies (future enhancement)
 - [ ] Implement conversation threading for back-and-forth messages (future enhancement)
 - [ ] Add response sentiment analysis (positive, neutral, negative) (future enhancement)
+
+
+---
+
+## GITHUB ENHANCEMENTS: Lightweight & Powerful Upgrades
+
+### Phase 1: BullMQ Message Queue
+- [x] Install bullmq and redis dependencies
+- [x] Create in-memory queue service (BullMQ-compatible API)
+- [x] Add message worker with rate limiting per platform
+- [x] Replace direct message sending with queue-based sending
+- [x] Add job monitoring and event listeners
+- [x] Implement retry logic with exponential backoff
+- [x] Add job prioritization by compatibility score
+
+### Phase 2: Crawlee Web Scraping
+- [x] Install crawlee and playwright dependencies
+- [x] Create Crawlee-powered Nationale Hulpgids scraper
+- [x] Add anti-detection features (fingerprints, TLS replication)
+- [x] Implement automatic session management
+- [x] Add proxy rotation support
+- [x] Ready for migration of other platform scrapers to Crawlee
+- [ ] Test scraping reliability with real credentials
+
+### Phase 3: rate-limiter-flexible
+- [x] Install rate-limiter-flexible dependency
+- [x] Create rate limiter service with per-platform limits
+- [x] Create rate limiter middleware for tRPC
+- [x] Add per-platform rate limits in scrapers (10-20 req/min)
+- [x] Add per-user API rate limits (100 req/min)
+- [x] Implement block strategy for DoS protection
+- [x] Add message rate limiting (5-10 msg/min per platform)
+- [x] Add authentication rate limiting (5 attempts/15min)
+
+### Phase 4: Integration & Testing
+- [x] Update tRPC procedures to use message queue
+- [x] Add queue stats endpoint for monitoring
+- [x] Integrate rate limiting with queue workers
+- [ ] Write vitest tests for queue, scraper, rate limiter
+- [ ] Test end-to-end flow with all enhancements
+- [ ] Update documentation with new features
