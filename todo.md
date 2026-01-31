@@ -396,3 +396,39 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [x] Show toast notifications for pause/resume actions
 - [x] Export calculateNextExecution function for resume logic
 - [x] Show correct button (Pause/Resume) based on campaign status
+
+
+---
+
+## CAMPAIGN CONSOLIDATION & DELETION
+
+### Consolidate Campaign Pages
+- [x] Create unified Campaigns page with tabs (Active, Scheduled, Queue)
+- [x] Move Active campaigns content to first tab
+- [x] Move Scheduled campaigns content to second tab
+- [x] Move Queue Monitor content to third tab
+- [x] Add campaign deletion with confirmation dialog
+- [x] Add pause/resume functionality to scheduled tab
+- [x] Update navigation to remove Scheduled and Queue Monitor links
+- [ ] Remove separate ScheduledCampaigns.tsx and QueueMonitor.tsx files (optional cleanup)
+
+## CAMPAIGN DELETION FEATURE
+
+### Phase 1: Delete tRPC Procedure
+- [ ] Add delete procedure to campaigns router
+- [ ] Implement cascade deletion (delete related candidates, messages)
+- [ ] Add authorization check (user owns campaign)
+- [ ] Add error handling
+
+### Phase 2: Confirmation Dialog
+- [ ] Create AlertDialog component for deletion confirmation
+- [ ] Show campaign details in confirmation dialog
+- [ ] Add warning about cascade deletion
+- [ ] Style dialog with danger theme (red accents)
+
+### Phase 3: UI Integration
+- [ ] Connect delete button in ScheduledCampaigns page
+- [ ] Add loading state during deletion
+- [ ] Show toast notification on success/error
+- [ ] Refresh campaign list after deletion
+- [ ] Also add delete to regular Campaigns page

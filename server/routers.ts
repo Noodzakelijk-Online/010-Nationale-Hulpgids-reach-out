@@ -314,6 +314,48 @@ export const appRouter = router({
         return { success: true };
       }),
     
+    delete: protectedProcedure
+      .input((val: unknown) => {
+        if (typeof val === "object" && val !== null && "id" in val && typeof val.id === "number") {
+          return { id: val.id };
+        }
+        throw new Error("Invalid input: expected object with numeric id");
+      })
+      .mutation(async ({ input, ctx }) => {
+        const { getDb, getCampaignById } = await import("./db");
+        const { campaigns, candidates, messages } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Check campaign ownership
+        const campaign = await getCampaignById(input.id);
+        if (!campaign || campaign.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to delete this campaign" });
+        }
+        
+        // Delete related messages first (cascade)
+        await db
+          .delete(messages)
+          .where(eq(messages.campaignId, input.id));
+        
+        // Delete related candidates (cascade)
+        await db
+          .delete(candidates)
+          .where(eq(candidates.campaignId, input.id));
+        
+        // Finally delete the campaign
+        await db
+          .delete(campaigns)
+          .where(and(
+            eq(campaigns.id, input.id),
+            eq(campaigns.userId, ctx.user.id)
+          ));
+        
+        return { success: true };
+      }),
+    
     stats: protectedProcedure
       .input((val: unknown) => {
         if (typeof val === "object" && val !== null && "id" in val && typeof val.id === "number") {
