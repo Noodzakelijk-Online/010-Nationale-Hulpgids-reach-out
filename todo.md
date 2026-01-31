@@ -333,3 +333,41 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [x] Add navigation link to Queue Monitor in sidebar
 - [x] Add route to App.tsx
 - [x] Implement auto-refresh functionality (every 3 seconds)
+
+
+---
+
+## FINAL ENHANCEMENTS: Job History, Scheduled Campaigns & Testing
+
+### Phase 1: Job History View
+- [x] Add detailed job history table to Queue Monitor
+- [x] Display individual job details (ID, type, status, timestamps)
+- [x] Show error logs for failed jobs
+- [x] Display retry attempts and progress
+- [x] Add job filtering by status (waiting, active, completed, failed, delayed)
+- [x] Add queue selection (messages vs discovery)
+- [x] Add getJobs method to InMemoryQueue class
+- [x] Add getJobs tRPC procedure to queue router
+- [x] Create tabbed interface with Overview and Job History tabs
+
+### Phase 2: Scheduled Campaigns
+- [x] Add scheduling fields to campaigns schema (isScheduled, scheduledFor, isRecurring, recurringPattern, lastExecutedAt, nextExecutionAt)
+- [x] Push database schema changes
+- [x] Create scheduled campaign service for automatic execution
+- [x] Implement recurring campaign logic (daily, weekly, monthly)
+- [x] Create optimal timing suggestions (weekday mornings)
+- [x] Add scheduled campaigns list view page
+- [x] Show next execution time for recurring campaigns
+- [x] Add navigation link to Scheduled Campaigns
+- [x] Add route to App.tsx
+- [ ] Integrate scheduling options into campaign wizard (future enhancement)
+- [ ] Add pause/resume functionality (future enhancement)
+
+### Phase 3: Real Credential Testing
+- [ ] Create dedicated test page for Nationale Hulpgids scraper
+- [ ] Add live scraping test with real credentials
+- [ ] Display scraped candidate data in test results
+- [ ] Show scraping progress and errors in real-time
+- [ ] Add validation for scraped data quality
+- [ ] Create test report with success metrics
+- [ ] Add ability to save test results to database

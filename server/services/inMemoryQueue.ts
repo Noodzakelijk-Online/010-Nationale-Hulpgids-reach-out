@@ -343,6 +343,35 @@ class InMemoryQueue extends EventEmitter {
     return this.delayed.length;
   }
 
+  async getJobs(status?: "waiting" | "active" | "completed" | "failed" | "delayed", start = 0, end = -1): Promise<Job[]> {
+    let jobs: Job[] = [];
+    
+    if (status) {
+      switch (status) {
+        case "waiting": jobs = [...this.waiting]; break;
+        case "active": jobs = [...this.active]; break;
+        case "completed": jobs = [...this.completed]; break;
+        case "failed": jobs = [...this.failed]; break;
+        case "delayed": jobs = [...this.delayed]; break;
+      }
+    } else {
+      // Return all jobs sorted by creation time (newest first)
+      jobs = [
+        ...this.active,
+        ...this.waiting,
+        ...this.delayed,
+        ...this.completed,
+        ...this.failed,
+      ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+
+    // Apply pagination
+    if (end === -1) {
+      return jobs.slice(start);
+    }
+    return jobs.slice(start, end + 1);
+  }
+
   async close(): Promise<void> {
     this.removeAllListeners();
     console.log(`[InMemoryQueue] Queue ${this.name} closed`);

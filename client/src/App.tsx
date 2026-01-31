@@ -11,6 +11,7 @@ import Candidates from "./pages/Candidates";
 import Messages from "./pages/Messages";
 import PlatformConnections from "./pages/PlatformConnections";
 import QueueMonitor from "./pages/QueueMonitor";
+import ScheduledCampaigns from "./pages/ScheduledCampaigns";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/messages" component={Messages} />
       <Route path="/platforms" component={PlatformConnections} />
       <Route path="/queue" component={QueueMonitor} />
+      <Route path="/scheduled" component={ScheduledCampaigns} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

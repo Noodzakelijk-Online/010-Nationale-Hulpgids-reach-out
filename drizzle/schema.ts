@@ -45,10 +45,17 @@ export const campaigns = mysqlTable("campaigns", {
   description: text("description"),
   targetPlatforms: text("targetPlatforms").notNull(), // JSON array of platform IDs
   searchCriteria: text("searchCriteria").notNull(), // JSON object with search parameters
-  status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "active", "paused", "completed", "scheduled"]).default("draft").notNull(),
   totalCandidates: int("totalCandidates").default(0).notNull(),
   messagesSent: int("messagesSent").default(0).notNull(),
   responsesReceived: int("responsesReceived").default(0).notNull(),
+  // Scheduling fields
+  isScheduled: int("isScheduled").default(0).notNull(), // 0 = immediate, 1 = scheduled
+  scheduledFor: timestamp("scheduledFor"), // When to execute the campaign
+  isRecurring: int("isRecurring").default(0).notNull(), // 0 = one-time, 1 = recurring
+  recurringPattern: varchar("recurringPattern", { length: 50 }), // daily, weekly, monthly
+  lastExecutedAt: timestamp("lastExecutedAt"), // Last execution time for recurring campaigns
+  nextExecutionAt: timestamp("nextExecutionAt"), // Next scheduled execution
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

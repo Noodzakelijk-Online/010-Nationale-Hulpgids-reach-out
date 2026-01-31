@@ -25,10 +25,24 @@ export const appRouter = router({
   }),
 
   // Queue management router
-  queue: router({    getStats: protectedProcedure
+  queue: router({
+    getStats: protectedProcedure
       .input(z.object({ queueName: z.enum(["messages", "discovery"]) }))
       .query(async ({ input }) => {
         return await getQueueStats(input.queueName);
+      }),
+    
+    getJobs: protectedProcedure
+      .input(z.object({
+        queueName: z.enum(["messages", "discovery"]),
+        status: z.enum(["waiting", "active", "completed", "failed", "delayed"]).optional(),
+        start: z.number().default(0),
+        end: z.number().default(49), // Default to 50 jobs
+      }))
+      .query(async ({ input }) => {
+        const { messageQueue, discoveryQueue } = await import("./services/inMemoryQueue");
+        const queue = input.queueName === "messages" ? messageQueue : discoveryQueue;
+        return await queue.getJobs(input.status, input.start, input.end);
       }),
   }),
 
