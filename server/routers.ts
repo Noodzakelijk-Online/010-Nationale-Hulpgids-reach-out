@@ -212,6 +212,12 @@ export const appRouter = router({
             description?: string;
             targetPlatforms: string;
             searchCriteria: string;
+            status?: string;
+            isScheduled?: number;
+            scheduledFor?: string;
+            isRecurring?: number;
+            recurringPattern?: string | null;
+            nextExecutionAt?: string;
           };
         }
         throw new Error("Invalid campaign input");
@@ -224,9 +230,88 @@ export const appRouter = router({
           description: input.description,
           targetPlatforms: input.targetPlatforms,
           searchCriteria: input.searchCriteria,
-          status: "draft",
+          status: (input.status as "draft" | "active" | "paused" | "completed" | "scheduled") || "draft",
+          isScheduled: input.isScheduled || 0,
+          scheduledFor: input.scheduledFor ? new Date(input.scheduledFor) : null,
+          isRecurring: input.isRecurring || 0,
+          recurringPattern: input.recurringPattern || null,
+          nextExecutionAt: input.nextExecutionAt ? new Date(input.nextExecutionAt) : null,
         });
         return { id: campaignId };
+      }),
+    
+    pause: protectedProcedure
+      .input((val: unknown) => {
+        if (typeof val === "object" && val !== null && "id" in val && typeof val.id === "number") {
+          return { id: val.id };
+        }
+        throw new Error("Invalid input: expected object with numeric id");
+      })
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import("./db");
+        const { campaigns } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Update campaign status to paused
+        await db
+          .update(campaigns)
+          .set({
+            status: "paused",
+            nextExecutionAt: null, // Clear next execution
+          })
+          .where(and(
+            eq(campaigns.id, input.id),
+            eq(campaigns.userId, ctx.user.id)
+          ));
+        
+        return { success: true };
+      }),
+    
+    resume: protectedProcedure
+      .input((val: unknown) => {
+        if (typeof val === "object" && val !== null && "id" in val && typeof val.id === "number") {
+          return { id: val.id };
+        }
+        throw new Error("Invalid input: expected object with numeric id");
+      })
+      .mutation(async ({ input, ctx }) => {
+        const { getDb, getCampaignById } = await import("./db");
+        const { campaigns } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Get campaign to recalculate next execution
+        const campaign = await getCampaignById(input.id);
+        if (!campaign || campaign.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+        }
+        
+        // Calculate next execution time
+        let nextExecutionAt = campaign.scheduledFor;
+        if (campaign.isRecurring === 1 && campaign.recurringPattern) {
+          // For recurring campaigns, calculate next execution from now
+          const { calculateNextExecution } = await import("./services/scheduledCampaigns");
+          nextExecutionAt = calculateNextExecution(campaign.recurringPattern);
+        }
+        
+        // Update campaign status to scheduled
+        await db
+          .update(campaigns)
+          .set({
+            status: "scheduled",
+            nextExecutionAt,
+          })
+          .where(and(
+            eq(campaigns.id, input.id),
+            eq(campaigns.userId, ctx.user.id)
+          ));
+        
+        return { success: true };
       }),
     
     stats: protectedProcedure

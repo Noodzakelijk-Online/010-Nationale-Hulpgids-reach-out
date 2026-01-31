@@ -9,8 +9,30 @@ import DashboardLayout from "@/components/DashboardLayout";
 
 export default function ScheduledCampaigns() {
   const { data: campaigns, refetch } = trpc.campaigns.list.useQuery();
+  const pauseCampaign = trpc.campaigns.pause.useMutation();
+  const resumeCampaign = trpc.campaigns.resume.useMutation();
 
-  const scheduledCampaigns = campaigns?.filter((c: any) => c.isScheduled === 1 && c.status === "scheduled");
+  const scheduledCampaigns = campaigns?.filter((c: any) => c.isScheduled === 1 && (c.status === "scheduled" || c.status === "paused"));
+  
+  const handlePause = async (campaignId: number) => {
+    try {
+      await pauseCampaign.mutateAsync({ id: campaignId });
+      toast.success("Campaign paused successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to pause campaign");
+    }
+  };
+  
+  const handleResume = async (campaignId: number) => {
+    try {
+      await resumeCampaign.mutateAsync({ id: campaignId });
+      toast.success("Campaign resumed successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to resume campaign");
+    }
+  };
 
   const formatDate = (date: string | Date | null) => {
     if (!date) return "Not set";
@@ -105,14 +127,29 @@ export default function ScheduledCampaigns() {
                       
                       {/* Actions */}
                       <div className="flex gap-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Play className="h-4 w-4 mr-2" />
-                          Run Now
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Pause className="h-4 w-4 mr-2" />
-                          Pause
-                        </Button>
+                        {campaign.status === "paused" ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleResume(campaign.id)}
+                            disabled={resumeCampaign.isPending}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Resume
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handlePause(campaign.id)}
+                            disabled={pauseCampaign.isPending}
+                          >
+                            <Pause className="h-4 w-4 mr-2" />
+                            Pause
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
                           <Trash2 className="h-4 w-4" />
                         </Button>

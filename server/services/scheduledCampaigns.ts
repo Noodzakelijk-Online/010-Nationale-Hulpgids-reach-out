@@ -147,7 +147,7 @@ async function executeCampaign(campaign: any) {
 /**
  * Calculate next execution time based on recurring pattern
  */
-function calculateNextExecution(pattern: string): Date {
+export function calculateNextExecution(pattern: string): Date {
   const now = new Date();
   
   switch (pattern) {

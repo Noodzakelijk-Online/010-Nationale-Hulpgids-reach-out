@@ -371,3 +371,28 @@ Automated reach-out system for care workers and job seekers across 5 Dutch platf
 - [ ] Add validation for scraped data quality
 - [ ] Create test report with success metrics
 - [ ] Add ability to save test results to database
+
+
+---
+
+## FINAL POLISH: Wizard Scheduling & Pause/Resume
+
+### Phase 1: Campaign Wizard Scheduling Integration
+- [x] Add scheduling toggle to Step 4 of campaign wizard
+- [x] Add date/time picker for scheduled execution
+- [x] Add recurring pattern selector (one-time, daily, weekly, monthly)
+- [x] Show optimal timing suggestions in wizard
+- [x] Update campaign creation mutation to handle scheduling fields
+- [x] Update handleSubmit to create scheduled campaigns
+- [x] Add validation for scheduling fields
+- [x] Add scheduling fields to CampaignData interface
+
+### Phase 2: Pause/Resume Functionality
+- [x] Add pause/resume tRPC procedures to campaigns router
+- [x] Implement pause logic (update status to paused, clear nextExecutionAt)
+- [x] Implement resume logic (recalculate nextExecutionAt, update status to scheduled)
+- [x] Connect pause/resume buttons in ScheduledCampaigns page
+- [x] Add loading states and error handling
+- [x] Show toast notifications for pause/resume actions
+- [x] Export calculateNextExecution function for resume logic
+- [x] Show correct button (Pause/Resume) based on campaign status

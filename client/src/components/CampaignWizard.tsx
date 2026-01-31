@@ -28,6 +28,10 @@ interface CampaignData {
   compatibilityThreshold: number;
   maxCandidates: number;
   autoSendMessages: boolean;
+  isScheduled: boolean;
+  scheduledFor: string;
+  isRecurring: boolean;
+  recurringPattern: string;
 }
 
 export function CampaignWizard({ onComplete, onCancel }: CampaignWizardProps) {
@@ -46,6 +50,10 @@ export function CampaignWizard({ onComplete, onCancel }: CampaignWizardProps) {
     compatibilityThreshold: 70,
     maxCandidates: 50,
     autoSendMessages: false,
+    isScheduled: false,
+    scheduledFor: "",
+    isRecurring: false,
+    recurringPattern: "daily",
   });
 
   const { data: platforms } = trpc.platforms.list.useQuery();
@@ -74,9 +82,53 @@ export function CampaignWizard({ onComplete, onCancel }: CampaignWizardProps) {
       toast.error("Please fill in all required fields");
       return;
     }
+    
+    // Validate scheduling fields if scheduled
+    if (campaignData.isScheduled && !campaignData.scheduledFor) {
+      toast.error("Please select a date and time for the scheduled campaign");
+      return;
+    }
 
     try {
       setIsDiscovering(true);
+      
+      // If scheduled, create the campaign and return (don't trigger discovery)
+      if (campaignData.isScheduled) {
+        toast.info("Creating scheduled campaign...");
+        
+        const scheduledFor = new Date(campaignData.scheduledFor);
+        const campaign = await createCampaign.mutateAsync({
+          title: campaignData.title,
+          description: campaignData.description,
+          targetPlatforms: JSON.stringify(campaignData.selectedPlatforms),
+          searchCriteria: JSON.stringify({
+            location: campaignData.location,
+            experience: campaignData.experience,
+            services: campaignData.services,
+            minBudget: campaignData.minBudget,
+            maxBudget: campaignData.maxBudget,
+            compatibilityThreshold: campaignData.compatibilityThreshold,
+            maxCandidates: campaignData.maxCandidates,
+          }),
+          status: "scheduled",
+          isScheduled: 1,
+          scheduledFor: scheduledFor.toISOString(),
+          isRecurring: campaignData.isRecurring ? 1 : 0,
+          recurringPattern: campaignData.isRecurring ? campaignData.recurringPattern : null,
+          nextExecutionAt: scheduledFor.toISOString(),
+        });
+        
+        toast.success(
+          campaignData.isRecurring
+            ? `Campaign scheduled! Will run ${campaignData.recurringPattern} starting ${scheduledFor.toLocaleString()}`
+            : `Campaign scheduled for ${scheduledFor.toLocaleString()}`
+        );
+        setIsDiscovering(false);
+        onComplete();
+        return;
+      }
+      
+      // Otherwise, create and launch immediately
       toast.info("Creating campaign...");
 
       // Step 1: Create the campaign
@@ -413,6 +465,82 @@ export function CampaignWizard({ onComplete, onCancel }: CampaignWizardProps) {
                     </p>
                   </div>
                 </div>
+              </div>
+              
+              {/* Campaign Scheduling Option */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4 space-y-4">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="isScheduled"
+                    checked={campaignData.isScheduled}
+                    onCheckedChange={(checked) =>
+                      setCampaignData({ ...campaignData, isScheduled: checked as boolean })
+                    }
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="isScheduled" className="font-semibold text-blue-900 cursor-pointer">
+                      Schedule Campaign Execution
+                    </Label>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Schedule this campaign to run automatically at a specific time instead of launching immediately.
+                    </p>
+                  </div>
+                </div>
+                
+                {campaignData.isScheduled && (
+                  <div className="space-y-4 pl-8">
+                    <div className="space-y-2">
+                      <Label htmlFor="scheduledFor" className="text-sm font-medium text-blue-900">
+                        Execution Date & Time
+                      </Label>
+                      <Input
+                        id="scheduledFor"
+                        type="datetime-local"
+                        value={campaignData.scheduledFor}
+                        onChange={(e) => setCampaignData({ ...campaignData, scheduledFor: e.target.value })}
+                        className="bg-white"
+                      />
+                      <p className="text-xs text-blue-600">
+                        💡 Best time: Weekday mornings 9-11 AM for highest response rates
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="isRecurring"
+                        checked={campaignData.isRecurring}
+                        onCheckedChange={(checked) =>
+                          setCampaignData({ ...campaignData, isRecurring: checked as boolean })
+                        }
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="isRecurring" className="text-sm font-medium text-blue-900 cursor-pointer">
+                          Make this a recurring campaign
+                        </Label>
+                      </div>
+                    </div>
+                    
+                    {campaignData.isRecurring && (
+                      <div className="space-y-2 pl-8">
+                        <Label className="text-sm font-medium text-blue-900">Recurrence Pattern</Label>
+                        <div className="flex gap-2">
+                          {['daily', 'weekly', 'monthly'].map((pattern) => (
+                            <Button
+                              key={pattern}
+                              type="button"
+                              variant={campaignData.recurringPattern === pattern ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCampaignData({ ...campaignData, recurringPattern: pattern })}
+                              className={campaignData.recurringPattern === pattern ? "bg-blue-600" : ""}
+                            >
+                              {pattern.charAt(0).toUpperCase() + pattern.slice(1)}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
