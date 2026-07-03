@@ -1,31 +1,48 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
+import { lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import DashboardLayout from "./components/DashboardLayout";
-import Home from "./pages/Home";
-import Campaigns from "./pages/Campaigns";
-import Candidates from "./pages/Candidates";
-import Messages from "./pages/Messages";
-import PlatformConnections from "./pages/PlatformConnections";
-import QueueMonitor from "./pages/QueueMonitor";
-import ScheduledCampaigns from "./pages/ScheduledCampaigns";
+
+const Home = lazy(() => import("./pages/Home"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
+const Candidates = lazy(() => import("./pages/Candidates"));
+const CandidateDetail = lazy(() => import("./pages/CandidateDetail"));
+const Messages = lazy(() => import("./pages/Messages"));
+const PlatformConnections = lazy(() => import("./pages/PlatformConnections"));
+const QueueMonitor = lazy(() => import("./pages/QueueMonitor"));
+const ScheduledCampaigns = lazy(() => import("./pages/ScheduledCampaigns"));
+const ResponseInbox = lazy(() => import("./pages/ResponseInbox"));
+const FollowUpQueue = lazy(() => import("./pages/FollowUpQueue"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/campaigns" component={Campaigns} />
-      <Route path="/candidates" component={Candidates} />
-      <Route path="/messages" component={Messages} />
-      <Route path="/platforms" component={PlatformConnections} />
-      <Route path="/queue" component={QueueMonitor} />
-      <Route path="/scheduled" component={ScheduledCampaigns} />
-      <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-muted-foreground">Loading...</div>
+      }
+    >
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/campaigns/:id" component={CampaignDetail} />
+        <Route path="/campaigns" component={Campaigns} />
+        <Route path="/candidates/:id" component={CandidateDetail} />
+        <Route path="/candidates" component={Candidates} />
+        <Route path="/messages" component={Messages} />
+        <Route path="/responses" component={ResponseInbox} />
+        <Route path="/follow-ups" component={FollowUpQueue} />
+        <Route path="/audit" component={AuditLog} />
+        <Route path="/platforms" component={PlatformConnections} />
+        <Route path="/queue" component={QueueMonitor} />
+        <Route path="/scheduled" component={ScheduledCampaigns} />
+        <Route path="/404" component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

@@ -1,319 +1,129 @@
-# Multi-Platform Reach-Out Tool
+# Nationale Hulpgids Reach-Out
 
-An AI-powered automation platform for discovering and engaging with healthcare professionals across multiple Dutch job platforms. Built for **Nationale Hulpgids** to streamline candidate outreach with intelligent matching, personalized messaging, and campaign management.
+An outreach tool for finding, matching, and contacting care professionals across Dutch platforms. It supports campaign setup, candidate discovery, AI-assisted matching, message review, and queue monitoring.
 
-## 🎯 Overview
+## What It Does
 
-This tool automates the entire candidate outreach workflow:
+- Finds candidates across Nationale Hulpgids, Indeed, PGBvacatures, Zorgbanen, and Jobbird.
+- Scores candidate fit against campaign criteria.
+- Drafts personalized outreach messages.
+- Lets the user review and edit messages before sending.
+- Tracks campaigns, candidates, messages, and queue status.
+- Runs as a Windows desktop app or as a production web app through ngrok.
 
-1. **Multi-Platform Scraping** - Discovers candidates from 5 major platforms (Nationale Hulpgids, Indeed, PGBvacatures, Zorgbanen, Jobbird)
-2. **AI-Powered Matching** - Scores candidate compatibility using LLM-based analysis
-3. **Personalized Messaging** - Generates tailored outreach messages in Dutch/English
-4. **Campaign Management** - Schedules, monitors, and tracks outreach campaigns
-5. **Queue System** - Manages job processing with rate limiting and retry logic
+## Run Modes
 
-## 🏗️ Architecture
+### Windows 11 Desktop App
 
-### Tech Stack
+Build an installer:
 
-**Frontend:**
-- React 19 + TypeScript
-- Tailwind CSS 4 + shadcn/ui
-- Wouter (routing)
-- tRPC client
-
-**Backend:**
-- Node.js + Express 4
-- tRPC 11 (end-to-end type safety)
-- Drizzle ORM (MySQL/TiDB)
-- Manus OAuth (authentication)
-
-**Key Libraries:**
-- **Crawlee** - Production-grade web scraping with anti-detection
-- **rate-limiter-flexible** - Platform-compliant rate limiting
-- **Cheerio** - HTML parsing
-- **Superjson** - Type-safe serialization
-
-### Project Structure
-
-```
-├── client/                    # React frontend
-│   ├── src/
-│   │   ├── pages/            # Page components
-│   │   ├── components/       # Reusable UI components
-│   │   ├── lib/trpc.ts       # tRPC client setup
-│   │   └── App.tsx           # Routes & layout
-│   └── public/               # Static assets
-│
-├── server/                    # Express backend
-│   ├── routers.ts            # tRPC procedures
-│   ├── db.ts                 # Database queries
-│   ├── services/             # Business logic
-│   │   ├── platformScraper.ts       # Scraper factory
-│   │   ├── scrapers/                # Platform-specific scrapers
-│   │   │   ├── crawleeNationaleHulpgids.ts
-│   │   │   ├── crawleeIndeed.ts
-│   │   │   ├── crawleePGBvacatures.ts
-│   │   │   ├── crawleeZorgbanen.ts
-│   │   │   └── crawleeJobbird.ts
-│   │   ├── aiMatching.ts            # AI compatibility scoring
-│   │   ├── inMemoryQueue.ts         # Job queue system
-│   │   ├── rateLimiter.ts           # Rate limiting
-│   │   └── scheduledCampaigns.ts    # Campaign scheduler
-│   └── _core/                # Framework plumbing
-│
-├── drizzle/                   # Database schema & migrations
-│   └── schema.ts             # Table definitions
-│
-└── shared/                    # Shared types & constants
-```
-
-## 🚀 Features
-
-### 1. Multi-Platform Scraping
-
-All scrapers use **Crawlee** for production-grade reliability:
-
-- **Anti-Detection** - Human-like fingerprints, TLS replication
-- **Session Management** - Automatic cookie handling
-- **Proxy Rotation** - IP rotation support (configurable)
-- **Rate Limiting** - Platform-specific limits (10-20 req/min)
-
-**Supported Platforms:**
-- Nationale Hulpgids (primary target, 419+ helpers in Arnhem)
-- Indeed
-- PGBvacatures
-- Zorgbanen
-- Jobbird
-
-### 2. AI-Powered Matching
-
-Uses LLM (via Manus Forge API) to:
-- Analyze candidate profiles against job requirements
-- Generate compatibility scores (0-100)
-- Identify key matching factors (experience, location, services)
-- Provide reasoning for match quality
-
-### 3. Campaign Management
-
-**Unified Interface** with 3 tabs:
-- **Active Campaigns** - Running campaigns with real-time stats
-- **Scheduled Campaigns** - Upcoming campaigns with pause/resume
-- **Queue Monitor** - Job tracking with status breakdown
-
-**Campaign Features:**
-- Multi-platform targeting
-- Location-based filtering
-- Service/skill matching
-- Budget constraints
-- Scheduled execution (one-time or recurring)
-- Automated messaging
-- Response tracking
-
-### 4. Message Queue System
-
-In-memory queue (BullMQ-compatible API):
-- Job prioritization by compatibility score
-- Automatic retries with exponential backoff
-- Rate limiting per platform
-- Real-time progress tracking
-- Job history with error logs
-
-### 5. Message Review Dashboard
-
-Before sending, review and edit:
-- All queued messages
-- Inline editing
-- Bulk approve/reject
-- Filter by campaign, platform, status
-
-## 📦 Installation
-
-### Prerequisites
-
-- Node.js 22+
-- pnpm 9+
-- MySQL/TiDB database
-- Manus account (for OAuth & LLM)
-
-### Setup
-
-1. **Clone the repository:**
 ```bash
-git clone https://github.com/Noodzakelijk-Online/010-Nationale-Hulpgids-reach-out.git
-cd 010-Nationale-Hulpgids-reach-out
+pnpm installer:win
 ```
 
-2. **Install dependencies:**
+The `.exe` installer is created in `release/`. The installed app runs locally, stores data in the Windows user data folder, and creates local secrets on first launch.
+
+### ngrok Production Run
+
 ```bash
-pnpm install
+pnpm build
+set NGROK_AUTHTOKEN=your-ngrok-token
+set JWT_SECRET=a-long-random-secret-at-least-32-characters
+set CREDENTIAL_ENCRYPTION_KEY=a-long-random-secret-at-least-32-characters
+set VITE_APP_ID=your-manus-app-id
+set OAUTH_SERVER_URL=https://your-oauth-server.example
+pnpm start:ngrok
 ```
 
-3. **Configure environment variables:**
+Vite is not used for ngrok or end-user runs. The app serves the built files from `dist/`.
 
-The following env vars are auto-injected by Manus platform:
-- `DATABASE_URL` - MySQL connection string
-- `JWT_SECRET` - Session signing secret
-- `OAUTH_SERVER_URL` - Manus OAuth backend
-- `VITE_OAUTH_PORTAL_URL` - Manus login portal
-- `BUILT_IN_FORGE_API_URL` - LLM API endpoint
-- `BUILT_IN_FORGE_API_KEY` - LLM API key
+### Local Production Run
 
-4. **Push database schema:**
 ```bash
-pnpm db:push
+pnpm build
+pnpm start:local
 ```
 
-5. **Start development server:**
+Local data is stored in `.local-data/`.
+
+### Development
+
 ```bash
 pnpm dev
 ```
 
-The app will be available at `http://localhost:3000`
+Development mode uses Vite for hot reloading.
 
-## 🔧 Development
+## Required Tools
 
-### Database Migrations
+- Node.js 22+
+- pnpm
+- Windows 11 for the installer target
+- ngrok account/token for public tunnel runs
+
+Server deployments also need:
+
+- MySQL or TiDB through `DATABASE_URL`
+- `JWT_SECRET`, at least 32 characters
+- `CREDENTIAL_ENCRYPTION_KEY`, at least 32 characters
+- `VITE_APP_ID`
+- `OAUTH_SERVER_URL`
+- OAuth/LLM environment variables for the hosted environment
+
+Desktop local mode does not require MySQL or OAuth.
+
+## Useful Commands
 
 ```bash
-# Push schema changes to database
-pnpm db:push
-
-# Generate migration files
-pnpm db:generate
-
-# Apply migrations
-pnpm db:migrate
-```
-
-### Testing
-
-```bash
-# Run all tests
+pnpm install
+pnpm check
 pnpm test
-
-# Run specific test file
-pnpm test server/messages.test.ts
+pnpm build
+pnpm installer:win
 ```
 
-### Code Quality
+## Configuration
 
-```bash
-# TypeScript type checking
-pnpm tsc --noEmit
+Security:
 
-# Linting (if configured)
-pnpm lint
+- `JWT_SECRET`
+- `CREDENTIAL_ENCRYPTION_KEY`
+- `NGROK_AUTHTOKEN`
+- `NGROK_DOMAIN`
+- `TRANSCRIPTION_AUDIO_HOST_ALLOWLIST`
+
+Resource controls:
+
+- `REQUEST_BODY_LIMIT`, default `5mb`
+- `SCRAPER_MAX_REQUESTS`, default `30`
+- `MESSAGE_QUEUE_CONCURRENCY`, default `2`
+- `DISCOVERY_QUEUE_CONCURRENCY`, default `1`
+- `SCHEDULED_CAMPAIGN_BATCH_SIZE`, default `20` (cap per scheduler tick, max `200`)
+
+## Documentation
+
+- [Operations guide](docs/OPERATIONS.md)
+- [Security, resource, and feature review](docs/SECURITY_RESOURCE_FEATURE_REVIEW.md)
+
+## Project Layout
+
+```text
+client/      React frontend
+desktop/    Electron desktop launcher
+server/     Express, tRPC, queues, scraping, matching
+shared/     Shared types
+drizzle/    Database schema and migrations
+docs/       Operator and review notes
 ```
 
-## 🎨 Key Components
+## Security Notes
 
-### Campaign Wizard (`client/src/components/CampaignWizard.tsx`)
+- Desktop mode refuses to start ngrok because it uses local auto-login.
+- Production sessions require `JWT_SECRET`.
+- Stored platform credentials are encrypted.
+- Credential list responses do not expose stored secrets.
+- Campaign and message data is scoped to the current user.
 
-4-step wizard for campaign creation:
-1. **Campaign Details** - Title, description, platforms
-2. **Target Criteria** - Location, experience, services, budget
-3. **AI Matching** - Compatibility threshold, max candidates
-4. **Review & Launch** - Scheduling, automated messaging
+## License
 
-### Platform Scrapers (`server/services/scrapers/`)
-
-Each scraper extends Crawlee's `CheerioCrawler`:
-- `authenticate()` - Login with credentials
-- `searchCandidates()` - Find candidates matching criteria
-- `getCandidateDetails()` - Fetch full profile
-- `sendMessage()` - Send outreach message
-
-### tRPC Routers (`server/routers.ts`)
-
-Type-safe API procedures:
-- `campaigns.*` - Campaign CRUD, stats, scheduling
-- `candidates.*` - Discovery, matching, listing
-- `messages.*` - Generation, review, bulk operations
-- `platformCredentials.*` - Credential management, testing
-- `queue.*` - Job stats, history
-
-## 🔐 Security
-
-- **Authentication** - Manus OAuth with JWT sessions
-- **Authorization** - User-scoped data access
-- **Rate Limiting** - Per-user API limits (100 req/min)
-- **Input Validation** - Zod schemas on all tRPC procedures
-- **SQL Injection** - Drizzle ORM with parameterized queries
-- **XSS Protection** - React auto-escaping + CSP headers
-
-## 📊 Rate Limits
-
-**Scraper Limits (per platform):**
-- Nationale Hulpgids: 10 req/min
-- Indeed: 20 req/min
-- PGBvacatures: 15 req/min
-- Zorgbanen: 15 req/min
-- Jobbird: 20 req/min
-
-**Messaging Limits (per platform):**
-- All platforms: 5-10 messages/min
-
-**API Limits:**
-- Per user: 100 req/min
-- Authentication: 5 attempts/15min
-
-## 🚢 Deployment
-
-This project is designed for deployment on **Manus Platform** which provides:
-- Automatic SSL certificates
-- Custom domain support
-- Built-in OAuth
-- LLM API access
-- Database hosting
-- One-click deployment
-
-For external hosting, ensure:
-1. MySQL/TiDB database is accessible
-2. OAuth provider is configured
-3. LLM API credentials are set
-4. Environment variables are properly configured
-
-## 📝 Database Schema
-
-**Key Tables:**
-- `users` - User accounts (via Manus OAuth)
-- `campaigns` - Outreach campaigns
-- `candidates` - Discovered candidates
-- `messages` - Generated messages
-- `platforms` - Platform definitions
-- `platformCredentials` - User platform credentials
-
-See `drizzle/schema.ts` for full schema.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is proprietary software owned by **Noodzakelijk Online**.
-
-## 🙋 Support
-
-For questions or issues:
-- GitHub Issues: https://github.com/Noodzakelijk-Online/010-Nationale-Hulpgids-reach-out/issues
-- Email: noodzakelijkonline@gmail.com
-
-## 🎯 Roadmap
-
-- [ ] Add Redis support for distributed queue
-- [ ] Implement email notifications
-- [ ] Add campaign analytics dashboard
-- [ ] Support for additional platforms
-- [ ] A/B testing for message templates
-- [ ] Conversation threading
-- [ ] Response sentiment analysis
-
----
-
-**Built with ❤️ for Nationale Hulpgids**
+Proprietary software owned by Noodzakelijk Online.

@@ -29,6 +29,41 @@
       "when": 1769862692927,
       "tag": "0003_graceful_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1782691200000,
+      "tag": "0004_outreach_operating_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1782693600000,
+      "tag": "0005_archive_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1782697200000,
+      "tag": "0006_message_snippets",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1782700800000,
+      "tag": "0007_candidate_qualification_decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1782704400000,
+      "tag": "0008_candidate_duplicate_resolutions",
+      "breakpoints": true
     }
   ]
 }

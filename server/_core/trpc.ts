@@ -1,6 +1,7 @@
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { consumeApiLimit } from "../services/rateLimiter";
 import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
@@ -15,6 +16,15 @@ const requireUser = t.middleware(async opts => {
 
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  try {
+    await consumeApiLimit(ctx.user.id, 1);
+  } catch (error) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: error instanceof Error ? error.message : "Rate limit exceeded. Please try again later.",
+    });
   }
 
   return next({

@@ -1,12 +1,17 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
-import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  const viteConfigUrl = new URL("../../vite.config.ts", import.meta.url).href;
+  const [{ createServer: createViteServer }, { default: viteConfig }, { nanoid }] =
+    await Promise.all([
+      import("vite"),
+      import(viteConfigUrl),
+      import("nanoid"),
+    ]);
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -49,16 +54,25 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   const distPath =
-    process.env.NODE_ENV === "development"
+    process.env.PUBLIC_DIR ||
+    (process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+      : path.resolve(import.meta.dirname, "public"));
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
+    app.use("*", (_req, res) => {
+      res.status(503).send("The application has not been built yet. Run the build command first.");
+    });
+    return;
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    etag: true,
+    immutable: true,
+    maxAge: "1h",
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
