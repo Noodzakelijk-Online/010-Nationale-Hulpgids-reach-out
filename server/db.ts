@@ -1804,6 +1804,155 @@ export async function getAllMessages(
   }));
 }
 
+export async function getMessageReviewPage(
+  userId: number,
+  options: {
+    status?: string;
+    campaignId?: number;
+    limit: number;
+    offset: number;
+  }
+) {
+  const { status, campaignId, limit, offset } = options;
+  const db = await getDb();
+
+  if (!db) {
+    const store = getLocalStore();
+    const userCampaignIds = new Set(
+      store.campaigns
+        .filter(campaign => campaign.userId === userId)
+        .map(campaign => campaign.id)
+    );
+    const matchingMessages = store.messages
+      .filter(message => userCampaignIds.has(message.campaignId))
+      .filter(message => !status || message.status === status)
+      .filter(message => !campaignId || message.campaignId === campaignId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const statusCounts = store.messages
+      .filter(message => userCampaignIds.has(message.campaignId))
+      .filter(message => !campaignId || message.campaignId === campaignId)
+      .reduce<Record<string, number>>((counts, message) => {
+        counts[message.status] = (counts[message.status] ?? 0) + 1;
+        return counts;
+      }, {});
+
+    return {
+      items: matchingMessages.slice(offset, offset + limit).map(message => {
+        const latestCandidateResponse = store.candidateResponses
+          .filter(response => response.candidateId === message.candidateId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+
+        return {
+          ...message,
+          campaign:
+            store.campaigns.find(
+              campaign => campaign.id === message.campaignId
+            ) ?? null,
+          candidate:
+            store.candidates.find(
+              candidate => candidate.id === message.candidateId
+            ) ?? null,
+          platform:
+            store.platforms.find(
+              platform => platform.id === message.platformId
+            ) ?? null,
+          latestCandidateResponse,
+        };
+      }),
+      total: matchingMessages.length,
+      statusCounts,
+    };
+  }
+
+  const conditions: any[] = [eq(campaigns.userId, userId)];
+  if (status) conditions.push(eq(messages.status, status as any));
+  if (campaignId) conditions.push(eq(messages.campaignId, campaignId));
+
+  const statusCountConditions: any[] = [eq(campaigns.userId, userId)];
+  if (campaignId) statusCountConditions.push(eq(messages.campaignId, campaignId));
+
+  const [countRows, statusRows, rows] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .innerJoin(campaigns, eq(messages.campaignId, campaigns.id))
+      .where(and(...conditions)),
+    db
+      .select({ status: messages.status, count: sql<number>`count(*)` })
+      .from(messages)
+      .innerJoin(campaigns, eq(messages.campaignId, campaigns.id))
+      .where(and(...statusCountConditions))
+      .groupBy(messages.status),
+    db
+      .select({
+        id: messages.id,
+        campaignId: messages.campaignId,
+        candidateId: messages.candidateId,
+        platformId: messages.platformId,
+        subject: messages.subject,
+        content: messages.content,
+        status: messages.status,
+        language: messages.language,
+        sentAt: messages.sentAt,
+        createdAt: messages.createdAt,
+        candidate: {
+          id: candidates.id,
+          name: candidates.name,
+          location: candidates.location,
+          experience: candidates.experience,
+          compatibilityScore: candidates.compatibilityScore,
+        },
+        campaign: {
+          id: campaigns.id,
+          title: campaigns.title,
+          status: campaigns.status,
+          searchCriteria: campaigns.searchCriteria,
+        },
+        platform: {
+          id: platforms.id,
+          name: platforms.name,
+        },
+      })
+      .from(messages)
+      .leftJoin(candidates, eq(messages.candidateId, candidates.id))
+      .leftJoin(platforms, eq(messages.platformId, platforms.id))
+      .leftJoin(campaigns, eq(messages.campaignId, campaigns.id))
+      .where(and(...conditions))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ]);
+  const candidateIds = Array.from(
+    new Set(rows.map(message => message.candidateId).filter(Boolean))
+  );
+  const responses =
+    candidateIds.length > 0
+      ? await db
+          .select()
+          .from(candidateResponses)
+          .where(inArray(candidateResponses.candidateId, candidateIds))
+          .orderBy(desc(candidateResponses.createdAt))
+      : [];
+  const latestResponseByCandidateId = new Map<number, CandidateResponse>();
+  for (const response of responses) {
+    if (!latestResponseByCandidateId.has(response.candidateId)) {
+      latestResponseByCandidateId.set(response.candidateId, response);
+    }
+  }
+
+  return {
+    items: rows.map(message => ({
+      ...message,
+      latestCandidateResponse:
+        latestResponseByCandidateId.get(message.candidateId) ?? null,
+    })),
+    total: Number(countRows[0]?.count ?? 0),
+    statusCounts: Object.fromEntries(
+      statusRows.map(row => [row.status, Number(row.count)])
+    ),
+  };
+}
+
 export async function updateMessageStatus(messageId: number, status: string) {
   const db = await getDb();
   if (!db) {

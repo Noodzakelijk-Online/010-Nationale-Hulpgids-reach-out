@@ -227,6 +227,38 @@ describe("Message Management Features", () => {
     });
   });
 
+  it("returns bounded review pages with status counts", async () => {
+    const caller = appRouter.createCaller(mockAdminContext);
+
+    await db.createMessage({
+      campaignId: testCampaignId,
+      candidateId: testCandidateId,
+      platformId: 1,
+      subject: "Second review page message",
+      content: "A second message keeps the review page bounded.",
+      language: "nl",
+      status: "approved",
+    });
+
+    const firstPage = await caller.messages.listPage({
+      campaignId: testCampaignId,
+      limit: 1,
+      offset: 0,
+    });
+    const secondPage = await caller.messages.listPage({
+      campaignId: testCampaignId,
+      limit: 1,
+      offset: 1,
+    });
+
+    expect(firstPage.items).toHaveLength(1);
+    expect(secondPage.items).toHaveLength(1);
+    expect(firstPage.total).toBeGreaterThanOrEqual(2);
+    expect(firstPage.items[0].id).not.toBe(secondPage.items[0].id);
+    expect(firstPage.statusCounts.queued).toBeGreaterThanOrEqual(1);
+    expect(firstPage.statusCounts.approved).toBeGreaterThanOrEqual(1);
+  });
+
   it("should get engagement metrics for a campaign", async () => {
     const caller = appRouter.createCaller(mockAdminContext);
 

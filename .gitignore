@@ -112,4 +112,5 @@ temp/
 *.sqlite3
 local-store.json
 .local-data/
+.test-local-data/
 security-scans/

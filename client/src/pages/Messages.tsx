@@ -72,6 +72,7 @@ const BULK_APPROVAL_REVIEW_THRESHOLD = 10;
 const MIN_CONFIRMATION_TEXT_LENGTH = 20;
 const MIN_EXTERNAL_MESSAGE_ID_LENGTH = 6;
 const MIN_SEND_FAILURE_REASON_LENGTH = 8;
+const MESSAGE_PAGE_SIZE = 50;
 const sensitiveMessagePattern =
   /\b(bsn|medicatie|diagnose|ziekte|psychisch|trauma|verslaving|persoonlijke verzorging|intiem|toilet|dementie|autisme|adhd|ptss|depressie|angst|beperking|behandeling|therapie)\b/i;
 const messageStatusFilters = [
@@ -153,27 +154,33 @@ export default function Messages() {
     useState<any>(null);
   const [sensitiveApprovalAcknowledged, setSensitiveApprovalAcknowledged] =
     useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Fetch all campaigns for filter dropdown
   const { data: campaigns } = trpc.campaigns.list.useQuery(undefined, {
     enabled: !!user,
   });
 
-  // Fetch all messages (we'll need to create this endpoint)
+  // Keep the review queue bounded so a long campaign history does not stall the UI.
   const {
-    data: messages,
+    data: messagePage,
     isLoading,
     refetch,
-  } = trpc.messages.listAll.useQuery(
+  } = trpc.messages.listPage.useQuery(
     {
       status: statusFilter === "all" ? undefined : statusFilter,
       campaignId:
         campaignFilter === "all" ? undefined : parseInt(campaignFilter),
+      limit: MESSAGE_PAGE_SIZE,
+      offset: currentPage * MESSAGE_PAGE_SIZE,
     },
     {
       enabled: !!user,
     }
   );
+  const messages = messagePage?.items ?? [];
+  const messageCounts = messagePage?.statusCounts ?? {};
+  const totalMessages = messagePage?.total ?? 0;
 
   const approveMessage = trpc.messages.approve.useMutation({
     onSuccess: () => {
@@ -560,8 +567,8 @@ export default function Messages() {
     );
   }
 
-  const queuedCount = messages?.filter(m => m.status === "queued").length || 0;
-  const lockedCount = messages?.filter(isMessageOutreachLocked).length || 0;
+  const queuedCount = messageCounts.queued ?? 0;
+  const lockedCount = messages.filter(isMessageOutreachLocked).length;
   const approvableQueuedMessages =
     messages?.filter(
       message =>
@@ -581,12 +588,18 @@ export default function Messages() {
     !bulkComplianceAcknowledged ||
     (bulkRequiresSafetyAcknowledgement && !bulkSafetyAcknowledged) ||
     (bulkRequiresSensitiveAcknowledgement && !bulkSensitiveAcknowledged);
-  const approvedCount =
-    messages?.filter(m => m.status === "approved").length || 0;
-  const sentCount = messages?.filter(m => m.status === "sent").length || 0;
-  const failedCount = messages?.filter(m => m.status === "failed").length || 0;
+  const approvedCount = messageCounts.approved ?? 0;
+  const sentCount = (messageCounts.sent ?? 0) + (messageCounts.delivered ?? 0);
+  const failedCount = messageCounts.failed ?? 0;
   const repliedCount =
-    messages?.filter(m => m.status === "replied").length || 0;
+    (messageCounts.replied ?? 0) + (messageCounts.responded ?? 0);
+  const pageStart = totalMessages === 0 ? 0 : currentPage * MESSAGE_PAGE_SIZE + 1;
+  const pageEnd = Math.min(
+    (currentPage + 1) * MESSAGE_PAGE_SIZE,
+    totalMessages
+  );
+  const hasPreviousPage = currentPage > 0;
+  const hasNextPage = pageEnd < totalMessages;
 
   return (
     <DashboardLayout>
@@ -606,7 +619,7 @@ export default function Messages() {
               disabled={bulkApprove.isPending || approvableQueuedCount === 0}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Approve Queued ({approvableQueuedCount})
+              Approve Visible Queued ({approvableQueuedCount})
             </Button>
           )}
         </div>
@@ -698,7 +711,13 @@ export default function Messages() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select
+                  value={statusFilter}
+                  onValueChange={value => {
+                    setStatusFilter(value);
+                    setCurrentPage(0);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -717,7 +736,10 @@ export default function Messages() {
                 <Label>Campaign</Label>
                 <Select
                   value={campaignFilter}
-                  onValueChange={setCampaignFilter}
+                  onValueChange={value => {
+                    setCampaignFilter(value);
+                    setCurrentPage(0);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -740,7 +762,7 @@ export default function Messages() {
         </Card>
 
         {/* Messages List */}
-        {!messages || messages.length === 0 ? (
+        {messages.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
@@ -754,6 +776,34 @@ export default function Messages() {
           </Card>
         ) : (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">
+                Showing {pageStart}-{pageEnd} of {totalMessages} messages
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(page => Math.max(0, page - 1))}
+                  disabled={!hasPreviousPage}
+                >
+                  Previous
+                </Button>
+                <span className="min-w-16 text-center text-xs text-muted-foreground">
+                  Page {currentPage + 1}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(page => page + 1)}
+                  disabled={!hasNextPage}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
             {messages.map(message => {
               const warnings = getMessageWarnings(message);
               const terminalResponse = getTerminalResponse(message);
