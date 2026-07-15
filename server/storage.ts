@@ -46,7 +46,14 @@ function ensureTrailingSlash(value: string): string {
 }
 
 function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+  const key = relKey.replace(/\\/g, "/").replace(/^\/+/, "");
+  const segments = key.split("/");
+
+  if (!key || segments.some((segment) => segment === ".." || segment === "")) {
+    throw new Error("Storage key must be a relative path without empty or parent-directory segments");
+  }
+
+  return key;
 }
 
 function toFormData(

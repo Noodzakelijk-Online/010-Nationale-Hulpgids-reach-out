@@ -8,31 +8,31 @@ const platformData = [
     name: 'Indeed',
     baseUrl: 'https://www.indeed.com',
     authType: 'credentials',
-    status: 'active',
+    isActive: 1,
   },
   {
     name: 'Nationale Hulpgids',
     baseUrl: 'https://www.nationalehulpgids.nl',
     authType: 'credentials',
-    status: 'active',
+    isActive: 1,
   },
   {
     name: 'PGBvacatures',
     baseUrl: 'https://www.pgbvacatures.nl',
     authType: 'credentials',
-    status: 'active',
+    isActive: 1,
   },
   {
     name: 'Zorgbanen',
     baseUrl: 'https://www.zorgbanen.nl',
     authType: 'credentials',
-    status: 'active',
+    isActive: 1,
   },
   {
     name: 'Jobbird',
     baseUrl: 'https://www.jobbird.com',
     authType: 'credentials',
-    status: 'active',
+    isActive: 1,
   },
 ];
 
@@ -41,7 +41,11 @@ async function seed() {
   
   for (const platform of platformData) {
     await db.insert(platforms).values(platform).onDuplicateKeyUpdate({
-      set: { name: platform.name }
+      set: {
+        baseUrl: platform.baseUrl,
+        authType: platform.authType,
+        isActive: platform.isActive,
+      }
     });
     console.log(`✓ Seeded: ${platform.name}`);
   }

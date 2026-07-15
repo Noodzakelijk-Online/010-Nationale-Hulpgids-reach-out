@@ -1,6 +1,8 @@
+import { describeScraperTarget } from "./scraperLog";
+
 /**
  * Platform Scraper Service
- * 
+ *
  * Handles web scraping and API integration for all 5 platforms:
  * - Indeed.com
  * - Nationale Hulpgids
@@ -34,10 +36,31 @@ interface SearchCriteria {
   keywords?: string;
 }
 
+interface ScraperRunOptions {
+  signal?: AbortSignal;
+}
+
 interface PlatformCredentials {
   email: string;
   password: string;
   sessionData?: string;
+}
+
+const DEFAULT_SCRAPER_MAX_REQUESTS = 30;
+const MAX_SCRAPER_REQUESTS = 250;
+
+type PlatformConnectionTestResult = {
+  success: boolean;
+  supportsAuthenticatedAutomation: boolean;
+  message: string;
+};
+
+function getScraperRequestLimit() {
+  const configuredLimit = Number(
+    process.env.SCRAPER_MAX_REQUESTS || DEFAULT_SCRAPER_MAX_REQUESTS
+  );
+  const safeLimit = Number.isFinite(configuredLimit) ? Math.floor(configuredLimit) : DEFAULT_SCRAPER_MAX_REQUESTS;
+  return Math.max(1, Math.min(MAX_SCRAPER_REQUESTS, safeLimit));
 }
 
 /**
@@ -48,7 +71,11 @@ abstract class BaseScraper {
   protected baseUrl: string;
   protected credentials?: PlatformCredentials;
 
-  constructor(platformName: string, baseUrl: string, credentials?: PlatformCredentials) {
+  constructor(
+    platformName: string,
+    baseUrl: string,
+    credentials?: PlatformCredentials
+  ) {
     this.platformName = platformName;
     this.baseUrl = baseUrl;
     this.credentials = credentials;
@@ -59,26 +86,78 @@ abstract class BaseScraper {
    */
   abstract authenticate(): Promise<boolean>;
 
+  protected supportsAuthenticatedAutomation(): boolean {
+    return false;
+  }
+
+  async testConnection(): Promise<PlatformConnectionTestResult> {
+    if (!this.credentials?.email || !this.credentials?.password) {
+      return {
+        success: false,
+        supportsAuthenticatedAutomation: false,
+        message: `${this.platformName} cannot test without email and password credentials.`,
+      };
+    }
+
+    if (!this.supportsAuthenticatedAutomation()) {
+      return {
+        success: false,
+        supportsAuthenticatedAutomation: false,
+        message: `${this.platformName} supports public discovery only; authenticated connection testing is unavailable.`,
+      };
+    }
+
+    try {
+      const success = await this.authenticate();
+      return {
+        success,
+        supportsAuthenticatedAutomation: true,
+        message: success
+          ? `Successfully authenticated with ${this.platformName}`
+          : `Authentication failed with provided credentials for ${this.platformName}.`,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unexpected connection test error.";
+      return {
+        success: false,
+        supportsAuthenticatedAutomation: true,
+        message: `Could not verify ${this.platformName} connection: ${message}`,
+      };
+    }
+  }
+
   /**
    * Search for candidates based on criteria
    */
-  abstract searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]>;
+  abstract searchCandidates(
+    criteria: SearchCriteria,
+    options?: ScraperRunOptions
+  ): Promise<ScrapedCandidate[]>;
 
   /**
    * Get detailed candidate profile
    */
-  abstract getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null>;
+  abstract getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null>;
 
   /**
    * Send message to candidate
    */
   abstract sendMessage(candidateId: string, message: string): Promise<boolean>;
 
+  protected unsupportedPlatformSend(): never {
+    throw new Error(
+      `${this.platformName} platform sending is not implemented. Use the approved manual send flow and record delivery evidence with messages.recordSendAttempt.`
+    );
+  }
+
   /**
    * Rate limiting helper
    */
   protected async delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -86,7 +165,9 @@ abstract class BaseScraper {
    */
   protected parseLocation(text: string): string {
     // Extract location patterns like "Arnhem", "Amsterdam, Netherlands", etc.
-    const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:,\s*[A-Z][a-z]+)?)/);
+    const locationMatch = text.match(
+      /([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:,\s*[A-Z][a-z]+)?)/
+    );
     return locationMatch ? locationMatch[1] : "";
   }
 
@@ -95,7 +176,9 @@ abstract class BaseScraper {
    */
   protected parseHourlyRate(text: string): string {
     // Extract patterns like "€15/uur", "€20-25 per hour", etc.
-    const rateMatch = text.match(/€\s*(\d+(?:-\d+)?)\s*(?:\/|per)\s*(?:uur|hour)/i);
+    const rateMatch = text.match(
+      /€\s*(\d+(?:-\d+)?)\s*(?:\/|per)\s*(?:uur|hour)/i
+    );
     return rateMatch ? `€${rateMatch[1]}/hour` : "";
   }
 
@@ -103,7 +186,9 @@ abstract class BaseScraper {
    * Extract email from text
    */
   protected extractEmail(text: string): string | undefined {
-    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const emailMatch = text.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
+    );
     return emailMatch ? emailMatch[0] : undefined;
   }
 
@@ -125,25 +210,29 @@ class IndeedScraper extends BaseScraper {
   }
 
   async authenticate(): Promise<boolean> {
-    // Indeed doesn't require authentication for basic search
-    // For advanced features, implement OAuth or session-based auth
-    return true;
+    console.warn(
+      "[Indeed] Authenticated automation is not implemented; public search remains available"
+    );
+    return false;
   }
 
-  async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
+  async searchCandidates(
+    criteria: SearchCriteria,
+    options: ScraperRunOptions = {}
+  ): Promise<ScrapedCandidate[]> {
     // Use Crawlee-powered scraper
     const { createIndeedScraper } = await import("./scrapers/crawleeIndeed");
     const crawleeScraper = createIndeedScraper({
       email: this.credentials?.email || "",
       password: this.credentials?.password || "",
-      maxRequestsPerCrawl: 50,
+      maxRequestsPerCrawl: getScraperRequestLimit(),
     });
-    
+
     const results = await crawleeScraper.searchCandidates({
       location: criteria.location || "Amsterdam",
       services: criteria.services?.split(",").map(s => s.trim()),
-    });
-    
+    }, options);
+
     await crawleeScraper.close();
     return results.map(r => ({
       ...r,
@@ -155,16 +244,16 @@ class IndeedScraper extends BaseScraper {
     }));
   }
 
-  async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
-    console.log(`[Indeed] Fetching details for:`, profileUrl);
+  async getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null> {
+    console.log(`[Indeed] Fetching details for:`, describeScraperTarget(profileUrl));
     await this.delay(500);
     return null; // Would fetch full profile in production
   }
 
   async sendMessage(candidateId: string, message: string): Promise<boolean> {
-    console.log(`[Indeed] Sending message to ${candidateId}`);
-    await this.delay(500);
-    return true;
+    this.unsupportedPlatformSend();
   }
 }
 
@@ -173,66 +262,48 @@ class IndeedScraper extends BaseScraper {
  */
 class NationaleHulpgidsScraper extends BaseScraper {
   constructor(credentials?: PlatformCredentials) {
-    super("Nationale Hulpgids", "https://www.nationalehulpgids.nl", credentials);
+    super(
+      "Nationale Hulpgids",
+      "https://www.nationalehulpgids.nl",
+      credentials
+    );
   }
 
   async authenticate(): Promise<boolean> {
     if (!this.credentials) return false;
-    
-    console.log(`[Nationale Hulpgids] Authenticating...`);
-    await this.delay(1000);
-    
-    // In production, implement actual login flow
-    return true;
-  }
 
-  async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
-    // Use the new enhanced scraper
-    const { NationaleHulpgidsScraper: EnhancedScraper } = await import("./scrapers/nationaleHulpgids");
+    const { NationaleHulpgidsScraper: EnhancedScraper } = await import(
+      "./scrapers/nationaleHulpgids"
+    );
     const enhancedScraper = new EnhancedScraper(this.credentials);
-    return enhancedScraper.searchCandidates(criteria);
-    
-    // Fallback mock data
-    /*return [
-      {
-        name: "Jan Smit",
-        profileUrl: "https://www.nationalehulpgids.nl/hulp/jan-smit-12345",
-        location: criteria.location || "Arnhem",
-        experience: "10+ years in thuiszorg",
-        services: "Verzorging, begeleiding, huishoudelijke hulp",
-        availability: "Ma-Vr 8:00-18:00",
-        hourlyRate: "€25/hour",
-        bio: "Ervaren zorgverlener met specialisatie in ouderenzorg",
-        skills: ["Persoonlijke verzorging", "Medicijnbeheer", "Begeleiding"],
-        languages: ["Nederlands", "Engels"],
-        certifications: ["Verzorgende IG", "BHV"],
-      },
-      {
-        name: "Maria de Vries",
-        profileUrl: "https://www.nationalehulpgids.nl/hulp/maria-devries-67890",
-        location: criteria.location || "Nijmegen",
-        experience: "7 years in disabled care",
-        services: "Begeleiding, ondersteuning bij dagelijkse activiteiten",
-        availability: "Flexibel, ook weekenden",
-        hourlyRate: "€20/hour",
-        bio: "Betrokken begeleider met hart voor mensen met een beperking",
-        skills: ["Begeleiding", "Activering", "Administratieve ondersteuning"],
-        languages: ["Nederlands"],
-        certifications: ["Begeleider gehandicaptenzorg"],
-      },
-    ];*/
+    return enhancedScraper.authenticate();
   }
 
-  async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
-    console.log(`[Nationale Hulpgids] Fetching details for:`, profileUrl);
+  async searchCandidates(
+    criteria: SearchCriteria,
+    options: ScraperRunOptions = {}
+  ): Promise<ScrapedCandidate[]> {
+    // Use the new enhanced scraper
+    const { NationaleHulpgidsScraper: EnhancedScraper } = await import(
+      "./scrapers/nationaleHulpgids"
+    );
+    const enhancedScraper = new EnhancedScraper(this.credentials);
+    return enhancedScraper.searchCandidates(criteria, options);
+  }
+
+  async getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null> {
+    console.log(
+      `[Nationale Hulpgids] Fetching details for:`,
+      describeScraperTarget(profileUrl)
+    );
     await this.delay(500);
     return null;
   }
 
   async sendMessage(candidateId: string, message: string): Promise<boolean> {
-    console.log(`[Nationale Hulpgids] Sending message to ${candidateId}`);
-    await this.delay(500);
-    return true;
+    this.unsupportedPlatformSend();
   }
 }
 
@@ -245,25 +316,31 @@ class PGBVacaturesScraper extends BaseScraper {
   }
 
   async authenticate(): Promise<boolean> {
-    console.log(`[PGBvacatures] Authenticating...`);
-    await this.delay(1000);
-    return true;
+    console.warn(
+      "[PGBvacatures] Authenticated automation is not implemented; public search remains available"
+    );
+    return false;
   }
 
-  async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
+  async searchCandidates(
+    criteria: SearchCriteria,
+    options: ScraperRunOptions = {}
+  ): Promise<ScrapedCandidate[]> {
     // Use Crawlee-powered scraper
-    const { createPGBvacaturesScraper } = await import("./scrapers/crawleePGBvacatures");
+    const { createPGBvacaturesScraper } = await import(
+      "./scrapers/crawleePGBvacatures"
+    );
     const crawleeScraper = createPGBvacaturesScraper({
       email: this.credentials?.email || "",
       password: this.credentials?.password || "",
-      maxRequestsPerCrawl: 50,
+      maxRequestsPerCrawl: getScraperRequestLimit(),
     });
-    
+
     const results = await crawleeScraper.searchCandidates({
       location: criteria.location || "Utrecht",
       services: criteria.services?.split(",").map(s => s.trim()),
-    });
-    
+    }, options);
+
     await crawleeScraper.close();
     return results.map(r => ({
       ...r,
@@ -274,16 +351,19 @@ class PGBVacaturesScraper extends BaseScraper {
     }));
   }
 
-  async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
-    console.log(`[PGBvacatures] Fetching details for:`, profileUrl);
+  async getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null> {
+    console.log(
+      `[PGBvacatures] Fetching details for:`,
+      describeScraperTarget(profileUrl)
+    );
     await this.delay(500);
     return null;
   }
 
   async sendMessage(candidateId: string, message: string): Promise<boolean> {
-    console.log(`[PGBvacatures] Sending message to ${candidateId}`);
-    await this.delay(500);
-    return true;
+    this.unsupportedPlatformSend();
   }
 }
 
@@ -296,25 +376,31 @@ class ZorgbanenScraper extends BaseScraper {
   }
 
   async authenticate(): Promise<boolean> {
-    console.log(`[Zorgbanen] Authenticating...`);
-    await this.delay(1000);
-    return true;
+    console.warn(
+      "[Zorgbanen] Authenticated automation is not implemented; public search remains available"
+    );
+    return false;
   }
 
-  async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
+  async searchCandidates(
+    criteria: SearchCriteria,
+    options: ScraperRunOptions = {}
+  ): Promise<ScrapedCandidate[]> {
     // Use Crawlee-powered scraper
-    const { createZorgbanenScraper } = await import("./scrapers/crawleeZorgbanen");
+    const { createZorgbanenScraper } = await import(
+      "./scrapers/crawleeZorgbanen"
+    );
     const crawleeScraper = createZorgbanenScraper({
       email: this.credentials?.email || "",
       password: this.credentials?.password || "",
-      maxRequestsPerCrawl: 50,
+      maxRequestsPerCrawl: getScraperRequestLimit(),
     });
-    
+
     const results = await crawleeScraper.searchCandidates({
       location: criteria.location || "Den Haag",
       services: criteria.services?.split(",").map(s => s.trim()),
-    });
-    
+    }, options);
+
     await crawleeScraper.close();
     return results.map(r => ({
       ...r,
@@ -326,16 +412,16 @@ class ZorgbanenScraper extends BaseScraper {
     }));
   }
 
-  async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
-    console.log(`[Zorgbanen] Fetching details for:`, profileUrl);
+  async getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null> {
+    console.log(`[Zorgbanen] Fetching details for:`, describeScraperTarget(profileUrl));
     await this.delay(500);
     return null;
   }
 
   async sendMessage(candidateId: string, message: string): Promise<boolean> {
-    console.log(`[Zorgbanen] Sending message to ${candidateId}`);
-    await this.delay(500);
-    return true;
+    this.unsupportedPlatformSend();
   }
 }
 
@@ -348,25 +434,29 @@ class JobbirdScraper extends BaseScraper {
   }
 
   async authenticate(): Promise<boolean> {
-    console.log(`[Jobbird] Authenticating...`);
-    await this.delay(1000);
-    return true;
+    console.warn(
+      "[Jobbird] Authenticated automation is not implemented; public search remains available"
+    );
+    return false;
   }
 
-  async searchCandidates(criteria: SearchCriteria): Promise<ScrapedCandidate[]> {
+  async searchCandidates(
+    criteria: SearchCriteria,
+    options: ScraperRunOptions = {}
+  ): Promise<ScrapedCandidate[]> {
     // Use Crawlee-powered scraper
     const { createJobbirdScraper } = await import("./scrapers/crawleeJobbird");
     const crawleeScraper = createJobbirdScraper({
       email: this.credentials?.email || "",
       password: this.credentials?.password || "",
-      maxRequestsPerCrawl: 50,
+      maxRequestsPerCrawl: getScraperRequestLimit(),
     });
-    
+
     const results = await crawleeScraper.searchCandidates({
       location: criteria.location || "Eindhoven",
       services: criteria.services?.split(",").map(s => s.trim()),
-    });
-    
+    }, options);
+
     await crawleeScraper.close();
     return results.map(r => ({
       ...r,
@@ -377,16 +467,16 @@ class JobbirdScraper extends BaseScraper {
     }));
   }
 
-  async getCandidateDetails(profileUrl: string): Promise<ScrapedCandidate | null> {
-    console.log(`[Jobbird] Fetching details for:`, profileUrl);
+  async getCandidateDetails(
+    profileUrl: string
+  ): Promise<ScrapedCandidate | null> {
+    console.log(`[Jobbird] Fetching details for:`, describeScraperTarget(profileUrl));
     await this.delay(500);
     return null;
   }
 
   async sendMessage(candidateId: string, message: string): Promise<boolean> {
-    console.log(`[Jobbird] Sending message to ${candidateId}`);
-    await this.delay(500);
-    return true;
+    this.unsupportedPlatformSend();
   }
 }
 
@@ -394,28 +484,31 @@ class JobbirdScraper extends BaseScraper {
  * Platform Scraper Factory
  */
 export class PlatformScraperFactory {
-  static createScraper(platformName: string, credentials?: PlatformCredentials): BaseScraper {
+  static createScraper(
+    platformName: string,
+    credentials?: PlatformCredentials
+  ): BaseScraper {
     switch (platformName.toLowerCase()) {
       case "indeed":
       case "indeed.com":
         return new IndeedScraper(credentials);
-      
+
       case "nationale hulpgids":
       case "nationalehulpgids":
         return new NationaleHulpgidsScraper(credentials);
-      
+
       case "pgbvacatures":
       case "pgbvacatures.nl":
         return new PGBVacaturesScraper(credentials);
-      
+
       case "zorgbanen":
       case "zorgbanen.nl":
         return new ZorgbanenScraper(credentials);
-      
+
       case "jobbird":
       case "jobbird.com":
         return new JobbirdScraper(credentials);
-      
+
       default:
         throw new Error(`Unknown platform: ${platformName}`);
     }
@@ -427,21 +520,22 @@ export class PlatformScraperFactory {
   static async searchMultiplePlatforms(
     platformNames: string[],
     criteria: SearchCriteria,
-    credentials?: Map<string, PlatformCredentials>
+    credentials?: Map<string, PlatformCredentials>,
+    options: ScraperRunOptions = {}
   ): Promise<Map<string, ScrapedCandidate[]>> {
     const results = new Map<string, ScrapedCandidate[]>();
 
-    const searchPromises = platformNames.map(async (platformName) => {
+    const searchPromises = platformNames.map(async platformName => {
       try {
         const creds = credentials?.get(platformName);
         const scraper = this.createScraper(platformName, creds);
-        
+
         // Authenticate if credentials provided
         if (creds) {
           await scraper.authenticate();
         }
-        
-        const candidates = await scraper.searchCandidates(criteria);
+
+        const candidates = await scraper.searchCandidates(criteria, options);
         results.set(platformName, candidates);
       } catch (error) {
         console.error(`Error scraping ${platformName}:`, error);
@@ -452,6 +546,19 @@ export class PlatformScraperFactory {
     await Promise.all(searchPromises);
     return results;
   }
+
+  static async testConnection(
+    platformName: string,
+    credentials: PlatformCredentials
+  ): Promise<PlatformConnectionTestResult> {
+    const scraper = this.createScraper(platformName, credentials);
+    return scraper.testConnection();
+  }
 }
 
-export type { ScrapedCandidate, SearchCriteria, PlatformCredentials };
+export type {
+  ScrapedCandidate,
+  SearchCriteria,
+  PlatformCredentials,
+  ScraperRunOptions,
+};

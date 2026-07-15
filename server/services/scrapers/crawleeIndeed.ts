@@ -1,14 +1,26 @@
 import { CheerioCrawler, ProxyConfiguration } from "crawlee";
-import type { CrawleeScraperConfig, ScrapedCandidate } from "./crawleeNationaleHulpgids";
+import type {
+  CrawleeScraperConfig,
+  ScrapedCandidate,
+} from "./crawleeNationaleHulpgids";
+import { getCrawleeConfiguration } from "../../_core/crawleeStorage";
+import {
+  describeScraperSearchCriteria,
+  describeScraperTarget,
+} from "../scraperLog";
+import {
+  runWithScraperAbort,
+  throwIfScraperAborted,
+  type ScraperRunOptions,
+} from "./scraperAbort";
 
 /**
  * Crawlee-powered scraper for Indeed
- * Features anti-detection, session management, and proxy rotation
+ * Features anti-detection, public listing discovery, and proxy rotation
  */
 export class CrawleeIndeedScraper {
   private config: CrawleeScraperConfig;
   private proxyConfiguration?: ProxyConfiguration;
-  private sessionCookie?: string;
 
   constructor(config: CrawleeScraperConfig) {
     this.config = {
@@ -25,9 +37,10 @@ export class CrawleeIndeedScraper {
   }
 
   async authenticate(): Promise<boolean> {
-    console.log("[Crawlee-Indeed] Authentication not required for public job listings");
-    this.sessionCookie = "mock-session";
-    return true;
+    console.warn(
+      "[Crawlee-Indeed] Authenticated automation is not implemented; using public job listings only"
+    );
+    return false;
   }
 
   async searchCandidates(criteria: {
@@ -35,63 +48,95 @@ export class CrawleeIndeedScraper {
     services?: string[];
     maxDistance?: number;
     minRating?: number;
-  }): Promise<ScrapedCandidate[]> {
-    console.log("[Crawlee-Indeed] Starting candidate search:", criteria);
+  }, options: ScraperRunOptions = {}): Promise<ScrapedCandidate[]> {
+    console.log(
+      "[Crawlee-Indeed] Starting candidate search:",
+      describeScraperSearchCriteria(criteria)
+    );
+    throwIfScraperAborted(options.signal);
 
     const candidates: ScrapedCandidate[] = [];
 
-    const crawler = new CheerioCrawler({
-      maxRequestsPerCrawl: this.config.maxRequestsPerCrawl,
-      maxConcurrency: this.config.maxConcurrency,
-      proxyConfiguration: this.proxyConfiguration,
+    const crawler = new CheerioCrawler(
+      {
+        maxRequestsPerCrawl: this.config.maxRequestsPerCrawl,
+        maxConcurrency: this.config.maxConcurrency,
+        proxyConfiguration: this.proxyConfiguration,
 
-      async requestHandler({ request, $, log }) {
-        log.info(`Processing ${request.url}`);
+        async requestHandler({ request, $, log }) {
+          throwIfScraperAborted(options.signal);
+          log.info(`Processing ${describeScraperTarget(request.url)}`);
 
-        // Extract job cards (Indeed structure)
-        $(".job_seen_beacon, .jobsearch-SerpJobCard, .result").each((index, element) => {
-          const $el = $(element);
+          // Extract job cards (Indeed structure)
+          $(".job_seen_beacon, .jobsearch-SerpJobCard, .result").each(
+            (index, element) => {
+              const $el = $(element);
 
-          const candidate: ScrapedCandidate = {
-            name: $el.find(".jobTitle, h2.title").first().text().trim() || "Unknown",
-            email: $el.find("[href^='mailto:']").first().attr("href")?.replace("mailto:", ""),
-            location: $el.find(".companyLocation, .location").first().text().trim() || criteria.location,
-            experience: $el.find(".experienceLevel, .snippet").first().text().trim(),
-            services: criteria.services || [],
-            availability: "Full-time",
-            profileUrl: $el.find("a").first().attr("href") || request.url,
-            platform: "Indeed",
-          };
+              const candidate: ScrapedCandidate = {
+                name:
+                  $el.find(".jobTitle, h2.title").first().text().trim() ||
+                  "Unknown",
+                email: $el
+                  .find("[href^='mailto:']")
+                  .first()
+                  .attr("href")
+                  ?.replace("mailto:", ""),
+                location:
+                  $el
+                    .find(".companyLocation, .location")
+                    .first()
+                    .text()
+                    .trim() || criteria.location,
+                experience: $el
+                  .find(".experienceLevel, .snippet")
+                  .first()
+                  .text()
+                  .trim(),
+                services: criteria.services || [],
+                availability: "Full-time",
+                profileUrl: $el.find("a").first().attr("href") || request.url,
+                platform: "Indeed",
+              };
 
-          if (candidate.name && candidate.name !== "Unknown") {
-            candidates.push(candidate);
-          }
-        });
-      },
-
-      failedRequestHandler({ request, log }, error) {
-        log.error(`Request ${request.url} failed: ${error.message}`);
-      },
-
-      preNavigationHooks: [
-        async ({ request }, goToOptions) => {
-          goToOptions.headers = {
-            ...goToOptions.headers,
-            "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          };
+              if (candidate.name && candidate.name !== "Unknown") {
+                candidates.push(candidate);
+              }
+            }
+          );
         },
-      ],
-    });
+
+        failedRequestHandler({ request, log }, error) {
+          log.error(
+            `Request ${describeScraperTarget(request.url)} failed: ${error.message}`
+          );
+        },
+
+        preNavigationHooks: [
+          async ({ request }, goToOptions) => {
+            throwIfScraperAborted(options.signal);
+            goToOptions.headers = {
+              ...goToOptions.headers,
+              "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            };
+          },
+        ],
+      },
+      getCrawleeConfiguration()
+    );
 
     const searchUrl = this.buildSearchUrl(criteria);
-    await crawler.run([searchUrl]);
+    await runWithScraperAbort(crawler.run([searchUrl]), options.signal);
 
     console.log(`[Crawlee-Indeed] Found ${candidates.length} candidates`);
     return candidates;
   }
 
-  private buildSearchUrl(criteria: { location: string; services?: string[] }): string {
+  private buildSearchUrl(criteria: {
+    location: string;
+    services?: string[];
+  }): string {
     const baseUrl = "https://nl.indeed.com/jobs";
     const params = new URLSearchParams({
       q: criteria.services?.join(" ") || "zorg",
@@ -105,6 +150,8 @@ export class CrawleeIndeedScraper {
   }
 }
 
-export function createIndeedScraper(config: CrawleeScraperConfig): CrawleeIndeedScraper {
+export function createIndeedScraper(
+  config: CrawleeScraperConfig
+): CrawleeIndeedScraper {
   return new CrawleeIndeedScraper(config);
 }

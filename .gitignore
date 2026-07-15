@@ -1,11 +1,15 @@
 # Dependencies
 **/node_modules
 .pnpm-store/
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
 
 # Build outputs
 dist/
 build/
 *.dist
+release/
 
 # Environment variables
 .env
@@ -45,6 +49,7 @@ pids
 *.seed
 *.pid.lock
 *.bak
+storage/
 
 # Coverage directory used by tools like istanbul
 coverage/
@@ -105,3 +110,7 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+local-store.json
+.local-data/
+.test-local-data/
+security-scans/

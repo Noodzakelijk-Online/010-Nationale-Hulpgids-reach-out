@@ -21,10 +21,23 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Target, MessageSquare, Link2 } from "lucide-react";
+import {
+  ClipboardList,
+  HelpCircle,
+  History,
+  Inbox,
+  LayoutDashboard,
+  Link2,
+  LogOut,
+  MessageSquare,
+  PanelLeft,
+  Target,
+  Users,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import SafeUseOnboarding from "./SafeUseOnboarding";
 import { Button } from "./ui/button";
 
 const menuItems = [
@@ -32,6 +45,9 @@ const menuItems = [
   { icon: Target, label: "Campaigns", path: "/campaigns" },
   { icon: Users, label: "Candidates", path: "/candidates" },
   { icon: MessageSquare, label: "Messages", path: "/messages" },
+  { icon: Inbox, label: "Responses", path: "/responses" },
+  { icon: History, label: "Follow-ups", path: "/follow-ups" },
+  { icon: ClipboardList, label: "Audit", path: "/audit" },
   { icon: Link2, label: "Platforms", path: "/platforms" },
 ];
 
@@ -42,8 +58,10 @@ const MAX_WIDTH = 480;
 
 export default function DashboardLayout({
   children,
+  suppressSafeUseOnboardingAutoOpen = false,
 }: {
   children: React.ReactNode;
+  suppressSafeUseOnboardingAutoOpen?: boolean;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -56,7 +74,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -68,7 +86,8 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+              Access to this dashboard requires authentication. Continue to
+              launch the login flow.
             </p>
           </div>
           <Button
@@ -93,7 +112,10 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent
+        setSidebarWidth={setSidebarWidth}
+        suppressSafeUseOnboardingAutoOpen={suppressSafeUseOnboardingAutoOpen}
+      >
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -103,17 +125,20 @@ export default function DashboardLayout({
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
+  suppressSafeUseOnboardingAutoOpen: boolean;
 };
 
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  suppressSafeUseOnboardingAutoOpen,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState<boolean | undefined>();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
@@ -225,6 +250,13 @@ function DashboardLayoutContent({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
+                  onClick={() => setOnboardingOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Safe outreach setup</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
@@ -235,17 +267,19 @@ function DashboardLayoutContent({
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => {
-            if (isCollapsed) return;
-            setIsResizing(true);
-          }}
-          style={{ zIndex: 50 }}
-        />
+        {!isMobile && (
+          <div
+            className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+            onMouseDown={() => {
+              if (isCollapsed) return;
+              setIsResizing(true);
+            }}
+            style={{ zIndex: 50 }}
+          />
+        )}
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-x-hidden">
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
@@ -260,8 +294,18 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-4">
+          {children}
+        </main>
       </SidebarInset>
+      {onboardingOpen === undefined && !suppressSafeUseOnboardingAutoOpen ? (
+        <SafeUseOnboarding />
+      ) : onboardingOpen === undefined ? null : (
+        <SafeUseOnboarding
+          open={onboardingOpen}
+          onOpenChange={setOnboardingOpen}
+        />
+      )}
     </>
   );
 }
